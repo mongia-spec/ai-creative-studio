@@ -16,13 +16,14 @@ export interface Scene {
   duration_sec: number;
   visual_prompt: string;
   audio_notes: string;
+  time_of_day: string;
   status: "draft" | "approved" | "rejected";
   preview_asset_id: string | null;
 }
 
 export const EDITABLE_FIELDS = [
   "title", "description", "location", "characters_text", "narration", "dialogue",
-  "camera", "lighting", "mood", "duration_sec", "visual_prompt", "audio_notes",
+  "camera", "lighting", "mood", "duration_sec", "visual_prompt", "audio_notes", "time_of_day",
 ] as const;
 export type SceneEditable = (typeof EDITABLE_FIELDS)[number];
 
@@ -98,6 +99,8 @@ export async function duplicateScene(db: Db, id: string): Promise<Scene> {
        select project_id, position+1, ${cols}, preview_asset_id from scenes where id=$1 returning *`, [id]);
     await tx.query(`insert into shots(scene_id, position, description, camera, duration_sec)
        select $2, position, description, camera, duration_sec from shots where scene_id=$1`, [id, copy.id]);
+    // The copy keeps the same cast. State changes stay on the original so memory isn't applied twice.
+    await tx.query(`insert into scene_characters(scene_id, character_id) select $2, character_id from scene_characters where scene_id=$1`, [id, copy.id]);
     await touch(tx, src.project_id);
     await refreshProjectStatus(tx, src.project_id);
     return copy;
@@ -142,4 +145,27 @@ export async function listShots(db: Db, sceneIds: string[]) {
   if (sceneIds.length === 0) return [];
   return db.query<{ id: string; scene_id: string; position: number; description: string; camera: string; duration_sec: number }>(
     `select * from shots where scene_id = any($1::uuid[]) order by scene_id, position`, [sceneIds]);
+}
+
+export async function addShot(db: Db, sceneId: string) {
+  const [{ max }] = await db.query<{ max: number }>(`select coalesce(max(position),0) max from shots where scene_id=$1`, [sceneId]);
+  const [shot] = await db.query<{ id: string }>(
+    `insert into shots(scene_id, position, description) values ($1,$2,'لقطة جديدة') returning id`, [sceneId, max + 1]);
+  return shot;
+}
+
+export async function updateShot(db: Db, id: string, patch: { description?: string; camera?: string; duration_sec?: number }) {
+  if (patch.duration_sec !== undefined && !(Number(patch.duration_sec) > 0 && Number(patch.duration_sec) <= 600)) {
+    throw new Error("مدة اللقطة يجب أن تكون بين 1 و600 ثانية");
+  }
+  for (const k of ["description", "camera", "duration_sec"] as const) {
+    if (patch[k] !== undefined) await db.query(`update shots set ${k}=$2 where id=$1`, [id, patch[k]]);
+  }
+}
+
+export async function deleteShot(db: Db, id: string) {
+  await db.transaction(async (tx) => {
+    const [s] = await tx.query<{ scene_id: string; position: number }>(`delete from shots where id=$1 returning scene_id, position`, [id]);
+    if (s) await tx.query(`update shots set position=position-1 where scene_id=$1 and position>$2`, [s.scene_id, s.position]);
+  });
 }

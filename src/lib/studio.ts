@@ -3,7 +3,9 @@ import "./job-handlers";
 import { JOB } from "./job-handlers";
 import { enqueueJob, runJob, type Job } from "./jobs";
 import { getProject, saveVersion } from "./projects";
-import { getScene, listScenes } from "./scenes";
+import { getScene, listScenes, type Scene } from "./scenes";
+import { autoLinkCharacters, getProjectMemory } from "./scene-memory";
+import { composeScenePrompt } from "./prompt";
 
 /**
  * High-level studio actions used by the UI. Jobs are queued and, since Phase 1 providers are
@@ -19,6 +21,7 @@ export async function generateScript(db: Db, projectId: string): Promise<Job> {
   });
   const done = await runJob(db, job.id);
   if (done.status === "succeeded") {
+    await autoLinkCharacters(db, projectId);
     await saveVersion(db, projectId, "توليد النص والمشاهد");
     for (const s of await listScenes(db, projectId)) await generatePreview(db, s.id, false);
   }
@@ -31,7 +34,9 @@ export async function generatePreview(db: Db, sceneId: string, regenerate = true
   const project = (await getProject(db, scene.project_id))!;
   const { job } = await enqueueJob(db, {
     workspaceId: project.workspace_id, projectId: project.id, type: JOB.PREVIEW,
-    input: { sceneId, prompt: scene.visual_prompt || scene.description || scene.title, title: scene.title, position: scene.position, variant: regenerate ? Date.now() : 0 },
+    // The composed prompt (scene + locked character identities + continuity) is part of the job
+    // input, so changing a character or its state produces a new preview; nothing else does.
+    input: { sceneId, prompt: await scenePrompt(db, scene), title: scene.title, position: scene.position, variant: regenerate ? Date.now() : 0 },
   });
   if (job.status === "succeeded" && job.output?.assetId) {
     // Same input already generated: reuse the existing preview at no cost.
@@ -39,4 +44,9 @@ export async function generatePreview(db: Db, sceneId: string, regenerate = true
     return job;
   }
   return runJob(db, job.id);
+}
+
+export async function scenePrompt(db: Db, scene: Scene) {
+  const memory = await getProjectMemory(db, scene.project_id);
+  return composeScenePrompt(scene, memory[scene.id] ?? []);
 }

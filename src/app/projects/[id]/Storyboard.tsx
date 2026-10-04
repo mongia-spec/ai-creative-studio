@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { Scene, SceneEditable } from "@/lib/scenes";
+import type { SceneCast } from "@/lib/scene-memory";
+import { STATE_FIELDS } from "@/config/memory-fields";
 import {
-  addSceneAction, approveAllAction, deleteSceneAction, duplicateSceneAction, moveSceneAction,
-  regeneratePreviewAction, setSceneStatusAction, updateSceneAction,
+  addSceneAction, addShotAction, approveAllAction, deleteSceneAction, deleteShotAction, duplicateSceneAction, moveSceneAction,
+  regeneratePreviewAction, setCharacterStateAction, setSceneCharactersAction, setSceneStatusAction, updateSceneAction, updateShotAction,
 } from "../../actions";
 import { useAction } from "./useAction";
 
@@ -23,7 +26,7 @@ const MAIN_FIELDS: [SceneEditable, string, number][] = [
 ];
 const DETAIL_FIELDS: [SceneEditable, string, number][] = [
   ["location", "المكان", 1],
-  ["characters_text", "الشخصيات", 1],
+  ["time_of_day", "الوقت", 1],
   ["camera", "الكاميرا", 1],
   ["lighting", "الإضاءة", 1],
   ["mood", "الجو العام", 1],
@@ -31,7 +34,12 @@ const DETAIL_FIELDS: [SceneEditable, string, number][] = [
   ["visual_prompt", "وصف الصورة (Prompt)", 3],
 ];
 
-export default function Storyboard(props: { projectId: string; scenes: Scene[]; shots: Shot[]; aspect: string }) {
+type CharOption = { id: string; name: string; locked: boolean };
+
+export default function Storyboard(props: {
+  projectId: string; scenes: Scene[]; shots: Shot[]; aspect: string;
+  memory: Record<string, SceneCast[]>; prompts: Record<string, string>; characters: CharOption[];
+}) {
   const { pending, error, run } = useAction();
   if (props.scenes.length === 0) {
     return (
@@ -56,14 +64,17 @@ export default function Storyboard(props: { projectId: string; scenes: Scene[]; 
       <ol className="space-y-4">
         {props.scenes.map((s, i) => (
           <SceneCard key={s.id} scene={s} aspect={props.aspect} first={i === 0} last={i === props.scenes.length - 1}
-            shots={props.shots.filter((x) => x.scene_id === s.id)} />
+            shots={props.shots.filter((x) => x.scene_id === s.id)} cast={props.memory[s.id] ?? []}
+            prompt={props.prompts[s.id] ?? ""} characters={props.characters} />
         ))}
       </ol>
     </section>
   );
 }
 
-function SceneCard({ scene, aspect, first, last, shots }: { scene: Scene; aspect: string; first: boolean; last: boolean; shots: Shot[] }) {
+function SceneCard({ scene, aspect, first, last, shots, cast, prompt, characters }: {
+  scene: Scene; aspect: string; first: boolean; last: boolean; shots: Shot[]; cast: SceneCast[]; prompt: string; characters: CharOption[];
+}) {
   const { pending, error, run } = useAction();
   const st = STATUS[scene.status];
   const save = (field: SceneEditable, value: string) => {
@@ -106,6 +117,7 @@ function SceneCard({ scene, aspect, first, last, shots }: { scene: Scene; aspect
               <Field key={`${f}-${scene[f]}`} value={String(scene[f] ?? "")} rows={rows} onSave={(v) => save(f, v)} ariaLabel={label} />
             </div>
           ))}
+          <CastEditor sceneId={scene.id} cast={cast} characters={characters} />
           <details>
             <summary className="cursor-pointer text-sm font-semibold text-primary">الإخراج والتفاصيل ({shots.length} لقطات)</summary>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -116,11 +128,11 @@ function SceneCard({ scene, aspect, first, last, shots }: { scene: Scene; aspect
                 </div>
               ))}
             </div>
-            {shots.length > 0 && (
-              <ul className="mt-2 space-y-1 text-sm text-muted">
-                {shots.map((sh) => <li key={sh.id}>لقطة {sh.position}: {sh.description} · {sh.camera} · {sh.duration_sec} ث</li>)}
-              </ul>
-            )}
+            <ShotsEditor sceneId={scene.id} shots={shots} />
+            <div className="mt-3 rounded-lg bg-surface-2 p-2 text-xs">
+              <span className="label">الوصف النهائي للصورة (المشهد + الشخصيات + الذاكرة):</span>
+              <p className="whitespace-pre-line">{prompt}</p>
+            </div>
           </details>
         </div>
       </div>
@@ -140,12 +152,83 @@ function SceneCard({ scene, aspect, first, last, shots }: { scene: Scene; aspect
 }
 
 /** Uncontrolled field that saves on blur. Keyed by its value so server updates reset it. */
-function Field(props: { value: string; onSave: (v: string) => void; rows?: number; type?: string; className?: string; ariaLabel: string }) {
+function Field(props: { value: string; onSave: (v: string) => void; rows?: number; type?: string; className?: string; ariaLabel: string; placeholder?: string }) {
   const [v, setV] = useState(props.value);
-  const common = { value: v, "aria-label": props.ariaLabel, className: props.className ?? "field", onBlur: () => props.onSave(v) };
+  const common = { value: v, "aria-label": props.ariaLabel, placeholder: props.placeholder, className: props.className ?? "field", onBlur: () => props.onSave(v) };
   return props.rows && props.rows > 1 ? (
     <textarea {...common} rows={props.rows} onChange={(e) => setV(e.target.value)} />
   ) : (
     <input {...common} type={props.type ?? "text"} min={props.type === "number" ? 1 : undefined} onChange={(e) => setV(e.target.value)} />
+  );
+}
+
+function CastEditor({ sceneId, cast, characters }: { sceneId: string; cast: SceneCast[]; characters: CharOption[] }) {
+  const { pending, error, run } = useAction();
+  const inScene = new Set(cast.map((c) => c.characterId));
+  const toggle = (id: string) => {
+    const next = inScene.has(id) ? [...inScene].filter((x) => x !== id) : [...inScene, id];
+    run(() => setSceneCharactersAction(sceneId, next));
+  };
+  return (
+    <div className="space-y-2 rounded-lg border border-line p-3">
+      <div className="label">الشخصيات في المشهد</div>
+      {characters.length === 0 ? (
+        <p className="text-sm text-muted">لا توجد شخصيات. <Link href="/characters" className="text-primary underline">أنشئ شخصية</Link> لتربطها بالمشاهد.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {characters.map((c) => (
+            <button key={c.id} type="button" disabled={pending} aria-pressed={inScene.has(c.id)} onClick={() => toggle(c.id)}
+              className={`rounded-full border px-3 py-0.5 text-sm ${inScene.has(c.id) ? "border-primary bg-primary text-primary-ink" : "border-line"}`}>
+              {c.locked ? "🔒 " : ""}{c.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {cast.map((c) => (
+        <div key={c.characterId} className="space-y-1 border-t border-line pt-2">
+          <div className="text-sm font-semibold">ذاكرة {c.name} في هذا المشهد</div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {STATE_FIELDS.map(([k, label]) => {
+              const eff = c.effective[k];
+              const inherited = eff && !c.own[k] ? `من المشهد ${eff.fromPosition}: ${eff.value}` : "بلا تغيير";
+              return (
+                <div key={k}>
+                  <label className="label">{label}</label>
+                  <Field key={`${k}-${c.own[k] ?? ""}`} value={c.own[k] ?? ""} placeholder={inherited} ariaLabel={`${label} ${c.name}`}
+                    onSave={(v) => { if (v !== (c.own[k] ?? "")) run(() => setCharacterStateAction(sceneId, c.characterId, { ...c.own, [k]: v } as Record<string, string>)); }} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      {cast.length > 0 && <p className="text-xs text-muted">ما تكتبه هنا يستمر في المشاهد التالية حتى يتغيّر.</p>}
+      {error && <p className="text-sm text-danger" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function ShotsEditor({ sceneId, shots }: { sceneId: string; shots: Shot[] }) {
+  const { pending, error, run } = useAction();
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="label">اللقطات</div>
+      <ol className="space-y-2">
+        {shots.map((sh) => (
+          <li key={sh.id} className="grid grid-cols-[2rem_1fr] items-start gap-2 sm:grid-cols-[2rem_2fr_1fr_5rem_auto]">
+            <span className="pt-2 text-sm text-muted">{sh.position}</span>
+            <Field key={`d-${sh.description}`} value={sh.description} ariaLabel={`وصف اللقطة ${sh.position}`}
+              onSave={(v) => v !== sh.description && run(() => updateShotAction(sh.id, { description: v }))} />
+            <Field key={`c-${sh.camera}`} value={sh.camera} ariaLabel={`كاميرا اللقطة ${sh.position}`} placeholder="الكاميرا"
+              onSave={(v) => v !== sh.camera && run(() => updateShotAction(sh.id, { camera: v }))} />
+            <Field key={`t-${sh.duration_sec}`} value={String(sh.duration_sec)} type="number" ariaLabel={`مدة اللقطة ${sh.position}`}
+              onSave={(v) => Number(v) !== sh.duration_sec && run(() => updateShotAction(sh.id, { duration_sec: Number(v) }))} />
+            <button className="btn btn-sm text-danger" disabled={pending} onClick={() => run(() => deleteShotAction(sh.id))} aria-label={`حذف اللقطة ${sh.position}`}>حذف</button>
+          </li>
+        ))}
+      </ol>
+      <button className="btn btn-sm" disabled={pending} onClick={() => run(() => addShotAction(sceneId))}>+ لقطة</button>
+      {error && <p className="text-sm text-danger" role="alert">{error}</p>}
+    </div>
   );
 }

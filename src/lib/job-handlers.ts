@@ -61,12 +61,16 @@ registerJobHandler(JOB.PREVIEW, "image", async ({ db, job, setProvider }) => {
   const preset = getPreset(scene.platform_preset);
   // Storyboard previews are low-res drafts: a fraction of the final size.
   const scale = 0.3;
+  // Reference images of the characters in this scene (Character Reference Pack).
+  const refs = await db.query<{ asset_id: string }>(
+    `select r.asset_id from scene_characters sc join character_references r on r.character_id=sc.character_id where sc.scene_id=$1`, [sceneId]);
   const provider = getProvider("image", "draft");
   setProvider(provider.info.id);
   const { result, usage } = await provider.generateImage({
     prompt: String(job.input.prompt), style: scene.style, label: `مشهد ${scene.position}: ${scene.title}`,
     width: Math.round(preset.width * scale), height: Math.round(preset.height * scale),
     seed: `${sceneId}:${job.input.variant ?? 0}`,
+    referenceAssetIds: refs.map((r) => r.asset_id),
   });
   await recordProviderCall(db, { workspaceId: job.workspace_id, projectId: scene.project_id, jobId: job.id, provider: provider.info, usage });
   const asset = await saveAsset(db, {

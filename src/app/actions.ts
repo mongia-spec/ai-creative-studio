@@ -9,6 +9,7 @@ import { generatePreview, generateScript } from "@/lib/studio";
 import * as scenes from "@/lib/scenes";
 import { retryJob, runJob } from "@/lib/jobs";
 import { saveAsset } from "@/lib/assets";
+import { setCharacterState, setSceneCharacters } from "@/lib/scene-memory";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -162,5 +163,52 @@ export async function uploadAssetAction(projectId: string, form: FormData) {
       });
     }
     refresh(projectId);
+  });
+}
+
+async function projectOfShot(shotId: string) {
+  const [r] = await (await getDb()).query<{ project_id: string }>(
+    `select s.project_id from shots sh join scenes s on s.id=sh.scene_id where sh.id=$1`, [shotId]);
+  if (!r) throw new Error("اللقطة غير موجودة");
+  return r.project_id;
+}
+
+export async function addShotAction(sceneId: string) {
+  return guard(async () => {
+    const pid = await projectOfScene(sceneId);
+    await scenes.addShot(await getDb(), sceneId);
+    refresh(pid);
+  });
+}
+
+export async function updateShotAction(shotId: string, patch: { description?: string; camera?: string; duration_sec?: number }) {
+  return guard(async () => {
+    const pid = await projectOfShot(shotId);
+    await scenes.updateShot(await getDb(), shotId, patch);
+    refresh(pid);
+  });
+}
+
+export async function deleteShotAction(shotId: string) {
+  return guard(async () => {
+    const pid = await projectOfShot(shotId);
+    await scenes.deleteShot(await getDb(), shotId);
+    refresh(pid);
+  });
+}
+
+export async function setSceneCharactersAction(sceneId: string, characterIds: string[]) {
+  return guard(async () => {
+    const pid = await projectOfScene(sceneId);
+    await setSceneCharacters(await getDb(), sceneId, characterIds);
+    refresh(pid);
+  });
+}
+
+export async function setCharacterStateAction(sceneId: string, characterId: string, state: Record<string, string>) {
+  return guard(async () => {
+    const pid = await projectOfScene(sceneId);
+    await setCharacterState(await getDb(), sceneId, characterId, state);
+    refresh(pid);
   });
 }

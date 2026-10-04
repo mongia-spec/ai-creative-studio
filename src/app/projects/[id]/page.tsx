@@ -6,6 +6,9 @@ import { listProjectJobs } from "@/lib/jobs";
 import { listProjectAssets } from "@/lib/assets";
 import { estimateFromScenes, spendSummary } from "@/lib/cost";
 import { getPreset, STYLES } from "@/config/platform-presets";
+import { getProjectMemory } from "@/lib/scene-memory";
+import { listCharacters } from "@/lib/characters";
+import { composeScenePrompt } from "@/lib/prompt";
 import { ProjectStatus, UnavailableButton } from "../../components";
 import ScriptEditor from "./ScriptEditor";
 import Storyboard from "./Storyboard";
@@ -22,7 +25,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     getScript(db, id), listScenes(db, id), listProjectJobs(db, id), listProjectAssets(db, id, "upload"),
     spendSummary(db, { projectId: id }), listVersions(db, id),
   ]);
-  const shots = await listShots(db, scenes.map((s) => s.id));
+  const [shots, memory, characters] = await Promise.all([
+    listShots(db, scenes.map((s) => s.id)), getProjectMemory(db, id), listCharacters(db, project.workspace_id),
+  ]);
   const preset = getPreset(project.platform_preset);
   const active = scenes.filter((s) => s.status !== "rejected");
   const estimate = estimateFromScenes(active);
@@ -65,6 +70,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             scenes={scenes}
             shots={shots.map((s) => ({ ...s, duration_sec: Number(s.duration_sec) }))}
             aspect={preset.aspectRatio.replace(":", " / ")}
+            memory={memory}
+            prompts={Object.fromEntries(scenes.map((s) => [s.id, composeScenePrompt(s, memory[s.id] ?? [])]))}
+            characters={characters.map((c) => ({ id: c.id, name: c.name, locked: c.locked }))}
           />
         </div>
 
@@ -96,7 +104,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             <h2 className="font-bold">الخطوات التالية</h2>
             <UnavailableButton label="تصدير فيديو مسودة" status="COMING_SOON" />
             <UnavailableButton label="تصدير لوحة القصة PDF" status="COMING_SOON" />
-            <UnavailableButton label="ربط الشخصيات بالمشاهد" status="COMING_SOON" />
             <UnavailableButton label="توليد صور حقيقية" status="PROVIDER_REQUIRED" />
             <UnavailableButton label="تعليق صوتي عربي" status="PROVIDER_REQUIRED" />
             <UnavailableButton label="توليد الفيديو النهائي" status="PROVIDER_REQUIRED" />

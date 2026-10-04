@@ -20,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="text-lg font-bold text-primary">AI Creative Studio</Link>
             <nav className="flex items-center gap-2">
               <Link href="/" className="btn btn-sm">مشاريعي</Link>
+              <Link href="/characters" className="btn btn-sm">الشخصيات</Link>
               <Link href="/projects/new" className="btn btn-sm btn-primary">مشروع جديد</Link>
             </nav>
           </div>
