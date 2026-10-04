@@ -12,9 +12,9 @@ export function hasFfmpeg(): Promise<boolean> {
   return available;
 }
 
-export function runFfmpeg(args: string[], timeoutMs = 120000): Promise<void> {
+export function runFfmpeg(args: string[], timeoutMs = 120000, cwd?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    execFile(/*turbopackIgnore: true*/ BIN, ["-hide_banner", "-loglevel", "error", "-y", ...args], { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 }, (err, _out, stderr) => {
+    execFile(/*turbopackIgnore: true*/ BIN, ["-hide_banner", "-loglevel", "error", "-y", ...args], { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, cwd }, (err, _out, stderr) => {
       if (err) reject(new Error(`FFmpeg: ${String(stderr || err.message).slice(0, 500)}`));
       else resolve();
     });

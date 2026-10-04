@@ -3,11 +3,12 @@ import { getProvider } from "@/providers/registry";
 import { getPreset } from "@/config/platform-presets";
 import { recordProviderCall } from "./cost";
 import { getAsset, readAssetBytes, saveAsset } from "./assets";
+import { renderDraftVideo } from "./export";
 import type { Project } from "./projects";
 import type { Scene } from "./scenes";
 
 /** Job types. Each one calls exactly one provider through the router and logs its cost. */
-export const JOB = { SCRIPT: "script.generate", PREVIEW: "scene.preview", VOICE: "voice.synthesize", AVATAR: "avatar.talk" } as const;
+export const JOB = { SCRIPT: "script.generate", PREVIEW: "scene.preview", VOICE: "voice.synthesize", AVATAR: "avatar.talk", EXPORT: "project.export" } as const;
 
 registerJobHandler(JOB.SCRIPT, "text", async ({ db, job, setProvider }) => {
   const projectId = job.project_id!;
@@ -115,4 +116,10 @@ registerJobHandler(JOB.AVATAR, "lipsync", async ({ db, job, setProvider }) => {
     mimeType: result.mimeType, bytes: result.bytes, durationSec: result.durationSec, providerRef: { provider: provider.info.id, jobId: job.id },
   });
   return { assetId: asset.id, mock: provider.info.isMock };
+});
+
+registerJobHandler(JOB.EXPORT, "render", async ({ db, job, setProvider }) => {
+  setProvider("local-ffmpeg");
+  const asset = await renderDraftVideo(db, job.project_id!, { captions: job.input.captions !== false });
+  return { assetId: asset.id };
 });

@@ -6,6 +6,8 @@ import type { Capability, QualityTier } from "@/providers/types";
  * Postgres-backed generation job queue. Every generation is its own job: it can fail and be
  * retried alone, and a job with identical input that already succeeded is reused (no new cost).
  */
+/** Provider capabilities, plus local rendering (FFmpeg) which calls no provider. */
+export type JobCapability = Capability | "render";
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export interface Job {
@@ -13,7 +15,7 @@ export interface Job {
   workspace_id: string;
   project_id: string | null;
   type: string;
-  capability: Capability;
+  capability: JobCapability;
   quality_tier: QualityTier;
   status: JobStatus;
   input: Record<string, unknown>;
@@ -35,9 +37,9 @@ export interface JobContext {
 }
 export type JobHandler = (ctx: JobContext) => Promise<Record<string, unknown>>;
 
-const handlers = new Map<string, { capability: Capability; run: JobHandler }>();
+const handlers = new Map<string, { capability: JobCapability; run: JobHandler }>();
 
-export function registerJobHandler(type: string, capability: Capability, run: JobHandler) {
+export function registerJobHandler(type: string, capability: JobCapability, run: JobHandler) {
   handlers.set(type, { capability, run });
 }
 

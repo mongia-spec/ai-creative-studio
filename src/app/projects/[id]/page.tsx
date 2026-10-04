@@ -1,4 +1,6 @@
 import Link from "next/link";
+import ExportPanel from "./ExportPanel";
+import { listExports } from "@/lib/studio";
 import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { getProject, getScript, listVersions } from "@/lib/projects";
@@ -26,8 +28,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     getScript(db, id), listScenes(db, id), listProjectJobs(db, id), listProjectAssets(db, id, "upload"),
     spendSummary(db, { projectId: id }), listVersions(db, id),
   ]);
-  const [shots, memory, characters] = await Promise.all([
-    listShots(db, scenes.map((s) => s.id)), getProjectMemory(db, id), listCharacters(db, project.workspace_id),
+  const [shots, memory, characters, exports] = await Promise.all([
+    listShots(db, scenes.map((s) => s.id)), getProjectMemory(db, id), listCharacters(db, project.workspace_id), listExports(db, id),
   ]);
   const preset = getPreset(project.platform_preset);
   const active = scenes.filter((s) => s.status !== "rejected");
@@ -101,11 +103,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             <p className="text-sm">المصروف الفعلي لهذا المشروع: <b>${spend.totalUsd.toFixed(2)}</b> ({spend.calls} استدعاء تجريبي)</p>
           </section>
 
+          <ExportPanel projectId={project.id} exports={exports} missingPreviews={scenes.filter((s) => !s.preview_asset_id).length} />
+
           <section className="card space-y-2 p-4">
             <h2 className="font-bold">الخطوات التالية</h2>
             <Link href={`/play/${project.id}`} className="btn btn-primary w-full justify-between">▶ المشغّل التفاعلي <span className="text-xs">اسأل الشخصيات</span></Link>
-            <UnavailableButton label="تصدير فيديو مسودة" status="COMING_SOON" />
-            <UnavailableButton label="تصدير لوحة القصة PDF" status="COMING_SOON" />
             <UnavailableButton label="توليد صور حقيقية" status="PROVIDER_REQUIRED" />
             <UnavailableButton label="تعليق صوتي عربي" status="PROVIDER_REQUIRED" />
             <UnavailableButton label="توليد الفيديو النهائي" status="PROVIDER_REQUIRED" />

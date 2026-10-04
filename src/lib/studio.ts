@@ -68,3 +68,26 @@ export async function sceneIdentityInput(db: Db, scene: Scene) {
   }
   return { prompt: composeScenePrompt(scene, cast), referenceAssetIds: [...new Set(refs)] };
 }
+
+/**
+ * Draft video export. The job input carries everything the video depends on (order, previews,
+ * durations, captions, platform), so an unchanged project reuses its last export for free.
+ */
+export async function exportDraftVideo(db: Db, projectId: string, captions = true): Promise<{ job: Job; reused: boolean }> {
+  const project = await getProject(db, projectId);
+  if (!project) throw new Error("المشروع غير موجود");
+  const scenes = await listScenes(db, projectId);
+  const signature = scenes.map((s) => [s.position, s.preview_asset_id, Number(s.duration_sec), s.dialogue || s.narration]);
+  const { job, reused } = await enqueueJob(db, {
+    workspaceId: project.workspace_id, projectId, type: JOB.EXPORT, maxAttempts: 1,
+    input: { captions, preset: project.platform_preset, signature },
+  });
+  const done = job.status === "succeeded" ? job : await runJob(db, job.id);
+  if (done.status !== "succeeded") throw new Error(done.error ?? "تعذّر التصدير");
+  return { job: done, reused: reused && job.status === "succeeded" };
+}
+
+export async function listExports(db: Db, projectId: string) {
+  return db.query<{ id: string; name: string; created_at: string; byte_size: number; duration_sec: string | null }>(
+    `select id, name, created_at, byte_size, duration_sec from assets where project_id=$1 and source='export' order by created_at desc limit 5`, [projectId]);
+}

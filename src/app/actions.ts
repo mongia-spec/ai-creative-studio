@@ -228,3 +228,11 @@ export async function lockOutfitForScenesAction(projectId: string, characterId: 
     refresh(projectId);
   });
 }
+
+export async function exportDraftAction(projectId: string, captions: boolean): Promise<ActionResult> {
+  return guard(async () => {
+    const { exportDraftVideo } = await import("@/lib/studio");
+    await exportDraftVideo(await getDb(), projectId, captions);
+    refresh(projectId);
+  });
+}
