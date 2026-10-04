@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* Design tokens: turquoise primary, white/beige surfaces, dark green secondary. */
+:root {
+  --bg: #faf6ef;
+  --surface: #ffffff;
+  --surface-2: #f3ece0;
+  --border: #e4dccd;
+  --text: #1f2a2a;
+  --muted: #5d6b69;
+  --primary: #0f8b8d;
+  --primary-ink: #ffffff;
+  --secondary: #1f5c45;
+  --danger: #b4423a;
+  --warn: #a8761c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1716;
+    --surface: #172221;
+    --surface-2: #1d2b2a;
+    --border: #2b3c3a;
+    --text: #e9efed;
+    --muted: #9fb0ad;
+    --primary: #2bb3b5;
+    --primary-ink: #04201f;
+    --secondary: #5fb38f;
+    --danger: #e0766d;
+    --warn: #e2b252;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-secondary: var(--secondary);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --font-sans: "IBM Plex Sans Arabic", system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.7;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.7rem;
+}
+.field:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border-radius: 0.6rem; padding: 0.45rem 0.95rem; font-weight: 600;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.btn:hover:not(:disabled) { border-color: var(--primary); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); }
+.btn-sm { padding: 0.2rem 0.6rem; font-size: 0.85rem; font-weight: 500; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; }
+.label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
