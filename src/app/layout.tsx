@@ -18,9 +18,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
             <Link href="/" className="text-lg font-bold text-primary">AI Creative Studio</Link>
-            <nav className="flex items-center gap-2">
+            <nav className="flex flex-wrap items-center gap-2">
               <Link href="/" className="btn btn-sm">مشاريعي</Link>
               <Link href="/characters" className="btn btn-sm">الشخصيات</Link>
+              <Link href="/talking-photo" className="btn btn-sm">الصورة المتحدثة</Link>
+              <Link href="/providers" className="btn btn-sm">المزوّدات</Link>
               <Link href="/projects/new" className="btn btn-sm btn-primary">مشروع جديد</Link>
             </nav>
           </div>

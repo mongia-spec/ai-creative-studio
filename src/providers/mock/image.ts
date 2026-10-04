@@ -33,6 +33,10 @@ export const mockImageProvider: ImageProvider = {
     id: "mock-image", name: "Mock Image", capability: "image", isMock: true,
     languages: ["ar", "en"], dialects: [], tiers: ["draft", "standard", "pro", "cinematic"],
     pricing: { unitType: "images", unitPriceUsd: 0 },
+    support: {
+      referenceImages: { level: "simulated", note: "يستقبل الصور المرجعية ويحفظها مع المهمة، لكنه يرسم صورة مؤقتة لا وجهًا." },
+      identityConsistency: { level: "simulated", note: "نفس الهوية تعطي نفس المعاينة، وتغييرها يعيد التوليد. لا يرسم الشخصية فعلًا." },
+    },
   },
   async generateImage(req) {
     const svg = placeholderSvg({ width: req.width, height: req.height, label: req.label ?? "", prompt: req.prompt, seed: req.seed ?? req.prompt });

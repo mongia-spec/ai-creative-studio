@@ -2,12 +2,12 @@ import { registerJobHandler } from "./jobs";
 import { getProvider } from "@/providers/registry";
 import { getPreset } from "@/config/platform-presets";
 import { recordProviderCall } from "./cost";
-import { saveAsset } from "./assets";
+import { getAsset, readAssetBytes, saveAsset } from "./assets";
 import type { Project } from "./projects";
 import type { Scene } from "./scenes";
 
 /** Job types. Each one calls exactly one provider through the router and logs its cost. */
-export const JOB = { SCRIPT: "script.generate", PREVIEW: "scene.preview" } as const;
+export const JOB = { SCRIPT: "script.generate", PREVIEW: "scene.preview", VOICE: "voice.synthesize", AVATAR: "avatar.talk" } as const;
 
 registerJobHandler(JOB.SCRIPT, "text", async ({ db, job, setProvider }) => {
   const projectId = job.project_id!;
@@ -78,4 +78,41 @@ registerJobHandler(JOB.PREVIEW, "image", async ({ db, job, setProvider }) => {
   });
   await db.query(`update scenes set preview_asset_id=$2, updated_at=now() where id=$1`, [sceneId, asset.id]);
   return { assetId: asset.id };
+});
+
+registerJobHandler(JOB.VOICE, "voice", async ({ db, job, setProvider }) => {
+  const v = job.input.voice as { provider: string; voiceId: string; language: string; dialect: string; tone: string; style: string; speed: number; pitch: number };
+  const provider = getProvider("voice", job.quality_tier);
+  setProvider(provider.info.id);
+  // Only ask for a dialect the provider declares; never pretend to speak one it doesn't.
+  const dialect = v.dialect && provider.info.dialects.includes(v.dialect) ? v.dialect : undefined;
+  const { result, usage } = await provider.synthesize({
+    text: String(job.input.spokenText), voiceId: v.voiceId, language: v.language, dialect,
+    tone: v.tone, style: v.style, speed: v.speed, pitch: v.pitch,
+  });
+  await recordProviderCall(db, { workspaceId: job.workspace_id, projectId: job.project_id, jobId: job.id, provider: provider.info, usage });
+  const asset = await saveAsset(db, {
+    workspaceId: job.workspace_id, projectId: job.project_id, source: "generated", name: "voice",
+    mimeType: result.mimeType, bytes: result.bytes, durationSec: result.durationSec, providerRef: { provider: provider.info.id, jobId: job.id },
+  });
+  return { assetId: asset.id, durationSec: result.durationSec ?? null, dialectUsed: dialect ?? null, mock: provider.info.isMock };
+});
+
+registerJobHandler(JOB.AVATAR, "lipsync", async ({ db, job, setProvider }) => {
+  const image = await getAsset(db, String(job.input.imageAssetId));
+  const audio = await getAsset(db, String(job.input.audioAssetId));
+  if (!image || image.kind !== "image") throw new Error("الصورة غير موجودة");
+  if (!audio || audio.kind !== "audio") throw new Error("الصوت غير موجود");
+  const provider = getProvider("lipsync", job.quality_tier);
+  setProvider(provider.info.id);
+  const { result, usage } = await provider.lipSync({
+    image: { bytes: await readAssetBytes(image), mimeType: image.mime_type },
+    audio: { bytes: await readAssetBytes(audio), mimeType: audio.mime_type, durationSec: audio.duration_sec == null ? undefined : Number(audio.duration_sec) },
+  });
+  await recordProviderCall(db, { workspaceId: job.workspace_id, projectId: job.project_id, jobId: job.id, provider: provider.info, usage });
+  const asset = await saveAsset(db, {
+    workspaceId: job.workspace_id, projectId: job.project_id, source: "generated", name: "talking",
+    mimeType: result.mimeType, bytes: result.bytes, durationSec: result.durationSec, providerRef: { provider: provider.info.id, jobId: job.id },
+  });
+  return { assetId: asset.id, mock: provider.info.isMock };
 });

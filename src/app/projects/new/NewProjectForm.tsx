@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { PlatformPreset } from "@/config/platform-presets";
 import type { StartOption } from "@/config/start-options";
@@ -20,6 +21,14 @@ export default function NewProjectForm(props: { options: StartOption[]; presets:
           {props.options.map((o) => {
             const working = o.status === "WORKING";
             const selected = startType === o.id;
+            if (o.href) {
+              return (
+                <Link key={o.id} href={o.href} className="flex flex-col gap-1 rounded-xl border border-line p-3 hover:border-primary">
+                  <span className="flex items-center justify-between gap-1 font-semibold">{o.label} <FeatureBadge status={o.status} /></span>
+                  {o.hint && <span className="text-xs text-muted">{o.hint}</span>}
+                </Link>
+              );
+            }
             return (
               <label
                 key={o.id}

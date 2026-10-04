@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { getProject, getScript, listVersions } from "@/lib/projects";
@@ -102,6 +103,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
           <section className="card space-y-2 p-4">
             <h2 className="font-bold">الخطوات التالية</h2>
+            <Link href={`/play/${project.id}`} className="btn btn-primary w-full justify-between">▶ المشغّل التفاعلي <span className="text-xs">اسأل الشخصيات</span></Link>
             <UnavailableButton label="تصدير فيديو مسودة" status="COMING_SOON" />
             <UnavailableButton label="تصدير لوحة القصة PDF" status="COMING_SOON" />
             <UnavailableButton label="توليد صور حقيقية" status="PROVIDER_REQUIRED" />

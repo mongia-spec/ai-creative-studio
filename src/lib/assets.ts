@@ -15,6 +15,7 @@ export interface Asset {
   checksum: string | null;
   width: number | null;
   height: number | null;
+  duration_sec: string | number | null;
   created_at: string;
 }
 
@@ -38,9 +39,11 @@ export async function saveAsset(
   db: Db,
   input: {
     workspaceId: string; projectId?: string | null; source: Asset["source"]; name?: string;
-    mimeType: string; bytes: Uint8Array; width?: number; height?: number; providerRef?: unknown;
+    mimeType: string; bytes: Uint8Array; width?: number; height?: number; durationSec?: number; providerRef?: unknown;
   },
 ): Promise<Asset> {
+  // Browsers send e.g. "audio/webm;codecs=opus": keep the base type.
+  input = { ...input, mimeType: input.mimeType.split(";")[0].trim().toLowerCase() };
   const ext = EXT[input.mimeType];
   if (!ext) throw new Error(`نوع الملف غير مدعوم: ${input.mimeType}`);
   if (input.bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error("حجم الملف أكبر من 50 ميغابايت");
@@ -58,11 +61,11 @@ export async function saveAsset(
   const key = `${input.workspaceId}/${id}.${ext}`;
   await getStorage().put(key, input.bytes);
   const [row] = await db.query<Asset>(
-    `insert into assets(id, workspace_id, project_id, kind, source, name, mime_type, byte_size, storage_key, checksum, width, height, provider_ref)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *`,
+    `insert into assets(id, workspace_id, project_id, kind, source, name, mime_type, byte_size, storage_key, checksum, width, height, provider_ref, duration_sec)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning *`,
     [id, input.workspaceId, input.projectId ?? null, kindOf(input.mimeType), input.source, input.name ?? null,
      input.mimeType, input.bytes.byteLength, key, checksum, input.width ?? null, input.height ?? null,
-     input.providerRef ? JSON.stringify(input.providerRef) : null],
+     input.providerRef ? JSON.stringify(input.providerRef) : null, input.durationSec ?? null],
   );
   return row;
 }

@@ -1,14 +1,17 @@
 /**
  * Every entry point in "New Project" with its honest status.
- * WORKING = implemented end to end. COMING_SOON = later phase. PROVIDER_REQUIRED = needs a real AI provider.
+ * WORKING = implemented end to end. MOCK = works end to end on the free mock provider (real quality
+ * needs a provider). COMING_SOON = later phase. PROVIDER_REQUIRED = needs a real AI provider.
  */
-export type FeatureStatus = "WORKING" | "COMING_SOON" | "PROVIDER_REQUIRED";
+export type FeatureStatus = "WORKING" | "MOCK" | "COMING_SOON" | "PROVIDER_REQUIRED";
 
 export interface StartOption {
   id: string;
   label: string;
   hint: string;
   status: FeatureStatus;
+  /** Tools that live on their own page instead of starting a project. */
+  href?: string;
 }
 
 export const START_OPTIONS: StartOption[] = [
@@ -20,17 +23,18 @@ export const START_OPTIONS: StartOption[] = [
   { id: "video", label: "ابدأ من فيديو", hint: "", status: "COMING_SOON" },
   { id: "create-image", label: "إنشاء صورة", hint: "", status: "PROVIDER_REQUIRED" },
   { id: "animate-image", label: "تحريك صورة", hint: "", status: "PROVIDER_REQUIRED" },
-  { id: "talking-character", label: "شخصية ناطقة", hint: "", status: "PROVIDER_REQUIRED" },
+  { id: "talking-character", label: "شخصية ناطقة", hint: "صورة + نص أو صوت ← مقطع متحدث", status: "MOCK", href: "/talking-photo" },
   { id: "reel", label: "إنشاء ريلز", hint: "", status: "COMING_SOON" },
   { id: "short", label: "إنشاء شورتس", hint: "", status: "COMING_SOON" },
   { id: "film", label: "إنشاء فيلم", hint: "", status: "COMING_SOON" },
-  { id: "interactive", label: "فيديو تفاعلي", hint: "", status: "COMING_SOON" },
-  { id: "conversational", label: "شخصية محاورة", hint: "", status: "PROVIDER_REQUIRED" },
+  { id: "interactive", label: "فيديو تفاعلي", hint: "افتحي مشروعًا ثم «المشغّل التفاعلي»", status: "MOCK", href: "/" },
+  { id: "conversational", label: "شخصية محاورة", hint: "تجيب من قاعدة معرفتها فقط", status: "MOCK", href: "/characters" },
   { id: "dub", label: "دبلجة فيديو", hint: "", status: "PROVIDER_REQUIRED" },
 ];
 
 export const STATUS_LABEL: Record<FeatureStatus, string> = {
   WORKING: "يعمل",
+  MOCK: "يعمل بمزوّد تجريبي",
   COMING_SOON: "قريبًا",
   PROVIDER_REQUIRED: "يحتاج مزوّدًا",
 };

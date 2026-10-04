@@ -17,7 +17,8 @@ describe("platform presets", () => {
 });
 
 describe("start options", () => {
-  it("only Idea and Text are marked working in Phase 1", () => {
+  it("only Idea and Text start projects; mock-backed tools link to their page", () => {
     expect(START_OPTIONS.filter((o) => o.status === "WORKING").map((o) => o.id)).toEqual(["idea", "text"]);
+    for (const o of START_OPTIONS.filter((x) => x.status === "MOCK")) expect(o.href).toMatch(/^\//);
   });
 });
