@@ -1,4 +1,4 @@
-import type { LipSyncProvider, MusicProvider, ProviderInfo, SpeechToTextProvider, VideoProvider, VoiceProvider, Capability } from "../types";
+import type { MusicProvider, ProviderInfo, SpeechToTextProvider, VideoProvider, Capability } from "../types";
 
 /**
  * Mocks for capabilities scheduled for later phases. They satisfy the interfaces so the
@@ -17,17 +17,9 @@ export const mockVideoProvider: VideoProvider = {
   info: info("video", "seconds"),
   async generateVideo(req) { return { result: empty("video/mp4", req.durationSec), usage: { units: req.durationSec, unitType: "seconds" } }; },
 };
-export const mockVoiceProvider: VoiceProvider = {
-  info: info("voice", "characters"),
-  async synthesize(req) { return { result: empty("audio/mpeg"), usage: { units: req.text.length, unitType: "characters" } }; },
-};
 export const mockSttProvider: SpeechToTextProvider = {
   info: info("stt", "seconds"),
   async transcribe() { return { result: { text: "", segments: [] }, usage: { units: 0, unitType: "seconds" } }; },
-};
-export const mockLipSyncProvider: LipSyncProvider = {
-  info: info("lipsync", "seconds"),
-  async lipSync() { return { result: empty("video/mp4"), usage: { units: 0, unitType: "seconds" } }; },
 };
 export const mockMusicProvider: MusicProvider = {
   info: info("music", "seconds"),

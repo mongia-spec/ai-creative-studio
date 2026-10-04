@@ -21,7 +21,7 @@ export interface Asset {
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const EXT: Record<string, string> = {
   "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/svg+xml": "svg", "image/gif": "gif",
-  "audio/mpeg": "mp3", "audio/wav": "wav", "audio/x-wav": "wav", "audio/mp4": "m4a", "audio/ogg": "ogg",
+  "audio/mpeg": "mp3", "audio/wav": "wav", "audio/x-wav": "wav", "audio/mp4": "m4a", "audio/ogg": "ogg", "audio/webm": "webm",
   "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
   "application/pdf": "pdf", "text/plain": "txt",
 };

@@ -1,4 +1,4 @@
-import type { DraftScene, ScriptDraft, ScriptRequest, TextProvider } from "../types";
+import type { AnswerRequest, DraftScene, ScriptDraft, ScriptRequest, TextProvider } from "../types";
 
 /**
  * Deterministic mock LLM: same input → same script. No network, no cost.
@@ -103,11 +103,33 @@ function fromText(req: ScriptRequest): ScriptDraft {
   };
 }
 
+/**
+ * Mock character answer: extractive (quotes the best passage sentences), never invents facts.
+ * A real LLM adapter will rephrase in the character's style, still grounded in the passages.
+ */
+function mockAnswer(req: AnswerRequest): { text: string; inScope: boolean } {
+  if (req.passages.length === 0) {
+    const topics = req.topics.slice(0, 3).join("، ");
+    return {
+      inScope: false,
+      text: topics
+        ? `سؤال جميل! لكني لا أعرف الإجابة عنه. أستطيع أن أحدثك عن: ${topics}. ماذا تحب أن تعرف؟`
+        : `سؤال جميل! لكني لا أعرف الإجابة عنه. لنعد إلى درسنا.`,
+    };
+  }
+  const sentences = req.passages.flatMap((p) => splitSentences(p.text)).slice(0, 2);
+  return { inScope: true, text: `${sentences.join(" ")}` };
+}
+
 export const mockTextProvider: TextProvider = {
   info: {
     id: "mock-text", name: "Mock LLM", capability: "text", isMock: true,
     languages: ["ar", "en"], dialects: [], tiers: ["draft", "standard", "pro", "cinematic"],
     pricing: { unitType: "characters", unitPriceUsd: 0 },
+  },
+  async answer(req) {
+    const result = mockAnswer(req);
+    return { result, usage: { units: req.question.length + result.text.length, unitType: "characters", model: "mock-1" } };
   },
   async generateScript(req) {
     if (!req.input.trim()) throw new Error("النص المدخل فارغ");

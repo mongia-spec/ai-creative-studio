@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import type { Character } from "@/lib/characters";
-import { deleteCharacterAction, removeReferenceAction, setLockedAction, updateCharacterAction, uploadReferencesAction } from "../actions";
+import { REFERENCE_ROLES, type ReferenceRole } from "@/config/character-fields";
+import { deleteCharacterAction, removeReferenceAction, setLockedAction, setReferenceRoleAction, updateCharacterAction, uploadReferencesAction } from "../actions";
 import { useAction } from "../../projects/[id]/useAction";
 
 export default function CharacterEditor(props: {
   character: Character;
   fields: { key: string; label: string }[];
-  references: { id: string; name: string | null }[];
+  references: { id: string; name: string | null; role: ReferenceRole }[];
   descriptor: string;
 }) {
   const c = props.character;
@@ -59,17 +60,24 @@ export default function CharacterEditor(props: {
           <span className="label">الوصف الذي يُضاف لكل مشهد تظهر فيه:</span>
           <p>{props.descriptor}</p>
         </div>
-        <p className="text-xs text-muted">الصوت واللغة واللهجة تُحفظ الآن، وتُستخدم عند إضافة مزوّد الصوت لاحقًا.</p>
       </section>
 
       <section className="card space-y-3 p-4">
         <h2 className="font-bold">الصور المرجعية</h2>
-        <p className="text-sm text-muted">صور الوجه والملابس التي تحدد شكل الشخصية. تُرسل مع كل مشهد عند إضافة مزوّد صور حقيقي.</p>
+        <p className="text-sm text-muted">
+          حدّدي دور كل صورة: الصورة الرئيسية (واحدة فقط)، الوجه، الملابس، الوضعية أو الزاوية. تُرسل تلقائيًا مع كل مشهد تظهر فيه الشخصية،
+          والرئيسية أولًا، وهي الصورة التي تتحدث في «الصورة المتحدثة» وداخل الفيديو التفاعلي.
+        </p>
         <ul className="flex flex-wrap gap-3">
           {props.references.map((r) => (
-            <li key={r.id} className="w-28 space-y-1">
+            <li key={r.id} className="w-32 space-y-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`/api/assets/${r.id}`} alt={r.name ?? ""} className="h-28 w-28 rounded-lg border border-line object-cover" />
+              <img src={`/api/assets/${r.id}`} alt={r.name ?? ""}
+                className={`h-32 w-32 rounded-lg border object-cover ${r.role === "primary" ? "border-primary ring-2 ring-primary" : "border-line"}`} />
+              <select aria-label="دور الصورة" className="field py-1 text-sm" value={r.role} disabled={locked || pending}
+                onChange={(e) => run(() => setReferenceRoleAction(c.id, r.id, e.target.value as ReferenceRole))}>
+                {REFERENCE_ROLES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+              </select>
               {!locked && <button className="btn btn-sm w-full justify-center" disabled={pending} onClick={() => run(() => removeReferenceAction(c.id, r.id))}>إزالة</button>}
             </li>
           ))}

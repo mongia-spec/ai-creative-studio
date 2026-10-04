@@ -63,3 +63,40 @@ describe("provider registry", () => {
     expect(listProviders().every((p) => p.isMock && p.pricing.unitPriceUsd === 0)).toBe(true);
   });
 });
+
+describe("identity mocks", () => {
+  it("voice mock returns a real WAV that follows text length and speed", async () => {
+    const { mockVoiceProvider } = await import("@/providers/mock/voice");
+    const short = await mockVoiceProvider.synthesize({ text: "مرحبا", voiceId: "", language: "ar" });
+    const long = await mockVoiceProvider.synthesize({ text: "مرحبا يا أصدقائي كيف حالكم اليوم في الصف", voiceId: "", language: "ar" });
+    const fast = await mockVoiceProvider.synthesize({ text: "مرحبا يا أصدقائي كيف حالكم اليوم في الصف", voiceId: "", language: "ar", speed: 2 });
+    expect(new TextDecoder().decode(short.result.bytes.slice(0, 4))).toBe("RIFF");
+    expect(long.result.durationSec).toBeGreaterThan(short.result.durationSec!);
+    expect(fast.result.durationSec).toBeLessThan(long.result.durationSec!);
+  });
+
+  it("answer mock quotes the passages and redirects when nothing matches", async () => {
+    const { mockTextProvider } = await import("@/providers/mock/text");
+    const base = { characterName: "سالمة", speakingStyle: "", personality: "", history: [], language: "ar", dialect: "", topics: ["الخبز", "اللبن"] };
+    const hit = await mockTextProvider.answer({ ...base, question: "مم يصنع الخبز؟", passages: [{ title: "الدرس", text: "يُصنع الخبز من الدقيق والماء. ثم يُخبز في الفرن." }] });
+    expect(hit.result.inScope).toBe(true);
+    expect(hit.result.text).toContain("الدقيق");
+    const miss = await mockTextProvider.answer({ ...base, question: "من فاز بالمباراة؟", passages: [] });
+    expect(miss.result.inScope).toBe(false);
+    expect(miss.result.text).toContain("الخبز");
+  });
+
+  it("talking-avatar mock keeps the image and makes a playable MP4 (FFmpeg)", async () => {
+    const { hasFfmpeg } = await import("@/lib/ffmpeg");
+    if (!(await hasFfmpeg())) return;
+    const { mockLipSyncProvider } = await import("@/providers/mock/lipsync");
+    const { mockVoiceProvider } = await import("@/providers/mock/voice");
+    const { placeholderSvg } = await import("@/providers/mock/image");
+    const audio = await mockVoiceProvider.synthesize({ text: "مرحبا يا أصدقائي", voiceId: "", language: "ar" });
+    const svg = new TextEncoder().encode(placeholderSvg({ prompt: "x", width: 320, height: 400, seed: "s", label: "سالمة" }));
+    const out = await mockLipSyncProvider.lipSync({ image: { bytes: svg, mimeType: "image/svg+xml" }, audio: { ...audio.result } });
+    expect(out.result.mimeType).toBe("video/mp4");
+    expect(new TextDecoder().decode(out.result.bytes.slice(4, 8))).toBe("ftyp");
+    expect(mockLipSyncProvider.info.support?.lipSync?.level).toBe("none");
+  }, 30000);
+});

@@ -18,8 +18,12 @@ export interface SceneCast {
   descriptor: string;
   /** Changes recorded in this scene. */
   own: CharacterState;
+  /** Outfit pinned in this scene (null = inherit). */
+  outfitId: string | null;
   /** What applies in this scene, and the scene position each value comes from. */
   effective: Partial<Record<StateKey, { value: string; fromPosition: number }>>;
+  /** Outfit in effect here (pinned here or carried from an earlier scene). */
+  effectiveOutfit: { id: string; name: string; assetId: string | null; fromPosition: number } | null;
 }
 
 function cleanState(s: Record<string, unknown>): CharacterState {
@@ -65,23 +69,62 @@ export async function setCharacterState(db: Db, sceneId: string, characterId: st
 
 /** Cast and resolved continuity for every scene of a project, in scene order. */
 export async function getProjectMemory(db: Db, projectId: string): Promise<Record<string, SceneCast[]>> {
-  const rows = await db.query<{ scene_id: string; position: number; state: CharacterState } & Pick<Character, "name" | "description" | "attributes" | "locked"> & { character_id: string }>(
-    `select sc.scene_id, s.position, sc.state, sc.character_id, c.name, c.description, c.attributes, c.locked
+  const rows = await db.query<{
+    scene_id: string; position: number; state: CharacterState; character_id: string; outfit_id: string | null;
+    outfit_name: string | null; outfit_description: string | null; outfit_asset_id: string | null;
+  } & Pick<Character, "name" | "description" | "attributes" | "locked">>(
+    `select sc.scene_id, s.position, sc.state, sc.character_id, sc.outfit_id, c.name, c.description, c.attributes, c.locked,
+       o.name outfit_name, o.description outfit_description, o.asset_id outfit_asset_id
      from scene_characters sc join scenes s on s.id=sc.scene_id join characters c on c.id=sc.character_id
+     left join character_outfits o on o.id=sc.outfit_id
      where s.project_id=$1 order by s.position, lower(c.name)`, [projectId]);
   const scenes = await db.query<{ id: string }>(`select id from scenes where project_id=$1 order by position`, [projectId]);
   const out: Record<string, SceneCast[]> = Object.fromEntries(scenes.map((s) => [s.id, []]));
-  const carried = new Map<string, SceneCast["effective"]>(); // character → state so far
+  // Per character: state so far, and outfit so far.
+  const carried = new Map<string, { effective: SceneCast["effective"]; outfit: SceneCast["effectiveOutfit"] }>();
   for (const r of rows) {
-    const prev = { ...(carried.get(r.character_id) ?? {}) };
-    for (const [k, v] of Object.entries(r.state ?? {})) if (v) prev[k as StateKey] = { value: v, fromPosition: r.position };
-    carried.set(r.character_id, prev);
+    const prev = carried.get(r.character_id) ?? { effective: {}, outfit: null };
+    const effective = { ...prev.effective };
+    let outfit = prev.outfit;
+    if (r.outfit_id) {
+      // Pinning an outfit resets wardrobe to that outfit.
+      outfit = { id: r.outfit_id, name: r.outfit_name!, assetId: r.outfit_asset_id, fromPosition: r.position };
+      effective.wardrobe = { value: r.outfit_description ? `${r.outfit_name} (${r.outfit_description})` : r.outfit_name!, fromPosition: r.position };
+    }
+    for (const [k, v] of Object.entries(r.state ?? {})) if (v) effective[k as StateKey] = { value: v, fromPosition: r.position };
+    carried.set(r.character_id, { effective, outfit });
     out[r.scene_id].push({
-      characterId: r.character_id, name: r.name, locked: r.locked,
-      descriptor: characterDescriptor(r), own: r.state ?? {}, effective: prev,
+      characterId: r.character_id, name: r.name, locked: r.locked, descriptor: characterDescriptor(r),
+      own: r.state ?? {}, outfitId: r.outfit_id, effective, effectiveOutfit: outfit,
     });
   }
   return out;
+}
+
+/** Pin (or clear) an outfit for a character in one scene. */
+export async function setSceneOutfit(db: Db, sceneId: string, characterId: string, outfitId: string | null) {
+  if (outfitId) {
+    const [o] = await db.query(`select 1 from character_outfits where id=$1 and character_id=$2`, [outfitId, characterId]);
+    if (!o) throw new Error("الزي لا يخص هذه الشخصية");
+  }
+  const rows = await db.query(`update scene_characters set outfit_id=$3 where scene_id=$1 and character_id=$2 returning 1`, [sceneId, characterId, outfitId]);
+  if (!rows.length) throw new Error("الشخصية ليست في هذا المشهد");
+  await db.query(`update scenes set updated_at=now() where id=$1`, [sceneId]);
+}
+
+/**
+ * Outfit lock for a range of scenes: pins the outfit in every scene from..to where the
+ * character appears, and clears wardrobe overrides there so nothing changes it by accident.
+ */
+export async function lockOutfitForScenes(db: Db, projectId: string, characterId: string, outfitId: string, fromPos: number, toPos: number) {
+  const [o] = await db.query(`select 1 from character_outfits where id=$1 and character_id=$2`, [outfitId, characterId]);
+  if (!o) throw new Error("الزي لا يخص هذه الشخصية");
+  if (!(fromPos >= 1 && toPos >= fromPos)) throw new Error("نطاق مشاهد غير صالح");
+  const rows = await db.query(
+    `update scene_characters sc set outfit_id=$3, state = sc.state - 'wardrobe'
+     from scenes s where s.id=sc.scene_id and s.project_id=$1 and sc.character_id=$2 and s.position between $4 and $5 returning 1`,
+    [projectId, characterId, outfitId, fromPos, toPos]);
+  return rows.length;
 }
 
 /** Link workspace characters whose name appears in a scene's text (used after script generation). */

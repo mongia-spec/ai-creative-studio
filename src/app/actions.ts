@@ -9,7 +9,7 @@ import { generatePreview, generateScript } from "@/lib/studio";
 import * as scenes from "@/lib/scenes";
 import { retryJob, runJob } from "@/lib/jobs";
 import { saveAsset } from "@/lib/assets";
-import { setCharacterState, setSceneCharacters } from "@/lib/scene-memory";
+import { setCharacterState, setSceneCharacters , setSceneOutfit, lockOutfitForScenes } from "@/lib/scene-memory";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -210,5 +210,21 @@ export async function setCharacterStateAction(sceneId: string, characterId: stri
     const pid = await projectOfScene(sceneId);
     await setCharacterState(await getDb(), sceneId, characterId, state);
     refresh(pid);
+  });
+}
+
+export async function setSceneOutfitAction(sceneId: string, characterId: string, outfitId: string | null) {
+  return guard(async () => {
+    const pid = await projectOfScene(sceneId);
+    await setSceneOutfit(await getDb(), sceneId, characterId, outfitId);
+    refresh(pid);
+  });
+}
+
+export async function lockOutfitForScenesAction(projectId: string, characterId: string, outfitId: string, fromPos: number, toPos: number) {
+  return guard(async () => {
+    const n = await lockOutfitForScenes(await getDb(), projectId, characterId, outfitId, fromPos, toPos);
+    if (n === 0) throw new Error("الشخصية لا تظهر في أي مشهد ضمن هذا النطاق");
+    refresh(projectId);
   });
 }

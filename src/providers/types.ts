@@ -5,6 +5,12 @@
 export type Capability = "text" | "image" | "video" | "voice" | "stt" | "lipsync" | "music";
 export type QualityTier = "draft" | "standard" | "pro" | "cinematic";
 
+/** Identity-related capabilities, shown honestly per provider. */
+export const SUPPORT_KEYS = ["identityConsistency", "referenceImages", "voiceConsistency", "talkingAvatar", "lipSync"] as const;
+export type SupportKey = (typeof SUPPORT_KEYS)[number];
+/** none: not offered. simulated: mock output only. partial: best effort, not guaranteed. full: provider guarantees it. */
+export type SupportLevel = "none" | "simulated" | "partial" | "full";
+
 export interface ProviderInfo {
   id: string;
   name: string;
@@ -16,6 +22,7 @@ export interface ProviderInfo {
   tiers: QualityTier[];
   pricing: { unitType: string; unitPriceUsd: number };
   limits?: Record<string, number>;
+  support?: Partial<Record<SupportKey, { level: SupportLevel; note: string }>>;
 }
 
 export interface Usage {
@@ -55,9 +62,24 @@ export interface ScriptDraft {
   body: string;
   scenes: DraftScene[];
 }
+export interface AnswerRequest {
+  characterName: string;
+  speakingStyle: string;
+  personality: string;
+  question: string;
+  /** Retrieved knowledge passages; the answer must come only from these. */
+  passages: { title: string; text: string }[];
+  /** Topics the character knows about, used to redirect off-topic questions. */
+  topics: string[];
+  history: { role: "user" | "character"; text: string }[];
+  language: string;
+  dialect: string;
+}
 export interface TextProvider {
   info: ProviderInfo;
   generateScript(req: ScriptRequest): Promise<{ result: ScriptDraft; usage: Usage }>;
+  /** Answer as the character, grounded only in the passages. Empty passages → polite redirect. */
+  answer(req: AnswerRequest): Promise<{ result: { text: string; inScope: boolean }; usage: Usage }>;
 }
 
 // ---------- Image ----------
@@ -91,9 +113,20 @@ export interface VideoProvider {
   info: ProviderInfo;
   generateVideo(req: { prompt: string; imageAssetId?: string; durationSec: number; width: number; height: number }): Promise<{ result: MediaResult; usage: Usage }>;
 }
+export interface VoiceRequest {
+  text: string;
+  voiceId: string;
+  language: string;
+  dialect?: string;
+  tone?: string;
+  style?: string;
+  speed?: number;
+  pitch?: number;
+  emotion?: string;
+}
 export interface VoiceProvider {
   info: ProviderInfo;
-  synthesize(req: { text: string; voiceId: string; language: string; dialect?: string; emotion?: string }): Promise<{ result: MediaResult; usage: Usage }>;
+  synthesize(req: VoiceRequest): Promise<{ result: MediaResult; usage: Usage }>;
 }
 export interface SpeechToTextProvider {
   info: ProviderInfo;
@@ -101,7 +134,8 @@ export interface SpeechToTextProvider {
 }
 export interface LipSyncProvider {
   info: ProviderInfo;
-  lipSync(req: { faceAssetId: string; audioAssetId: string }): Promise<{ result: MediaResult; usage: Usage }>;
+  /** Make the face in `image` speak `audio`. The face must be kept as is (no redesign). */
+  lipSync(req: { image: { bytes: Uint8Array; mimeType: string }; audio: { bytes: Uint8Array; mimeType: string; durationSec?: number } }): Promise<{ result: MediaResult; usage: Usage }>;
 }
 export interface MusicProvider {
   info: ProviderInfo;

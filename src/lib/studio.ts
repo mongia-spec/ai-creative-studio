@@ -36,7 +36,7 @@ export async function generatePreview(db: Db, sceneId: string, regenerate = true
     workspaceId: project.workspace_id, projectId: project.id, type: JOB.PREVIEW,
     // The composed prompt (scene + locked character identities + continuity) is part of the job
     // input, so changing a character or its state produces a new preview; nothing else does.
-    input: { sceneId, prompt: await scenePrompt(db, scene), title: scene.title, position: scene.position, variant: regenerate ? Date.now() : 0 },
+    input: { sceneId, ...(await sceneIdentityInput(db, scene)), title: scene.title, position: scene.position, variant: regenerate ? Date.now() : 0 },
   });
   if (job.status === "succeeded" && job.output?.assetId) {
     // Same input already generated: reuse the existing preview at no cost.
@@ -49,4 +49,22 @@ export async function generatePreview(db: Db, sceneId: string, regenerate = true
 export async function scenePrompt(db: Db, scene: Scene) {
   const memory = await getProjectMemory(db, scene.project_id);
   return composeScenePrompt(scene, memory[scene.id] ?? []);
+}
+
+/**
+ * Everything that defines how a scene must look: the composed prompt and the identity
+ * reference images (primary/face/outfit/pose of each character + its current outfit image).
+ * It is part of the preview job input, so the same identity always reuses the same result.
+ */
+export async function sceneIdentityInput(db: Db, scene: Scene) {
+  const memory = await getProjectMemory(db, scene.project_id);
+  const cast = memory[scene.id] ?? [];
+  const refs: string[] = [];
+  for (const c of cast) {
+    const rows = await db.query<{ asset_id: string }>(
+      `select asset_id from character_references where character_id=$1 order by (role='primary') desc, created_at`, [c.characterId]);
+    refs.push(...rows.map((r) => r.asset_id));
+    if (c.effectiveOutfit?.assetId) refs.push(c.effectiveOutfit.assetId);
+  }
+  return { prompt: composeScenePrompt(scene, cast), referenceAssetIds: [...new Set(refs)] };
 }

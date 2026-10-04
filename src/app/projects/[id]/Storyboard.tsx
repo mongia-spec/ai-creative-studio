@@ -7,7 +7,7 @@ import type { SceneCast } from "@/lib/scene-memory";
 import { STATE_FIELDS } from "@/config/memory-fields";
 import {
   addSceneAction, addShotAction, approveAllAction, deleteSceneAction, deleteShotAction, duplicateSceneAction, moveSceneAction,
-  regeneratePreviewAction, setCharacterStateAction, setSceneCharactersAction, setSceneStatusAction, updateSceneAction, updateShotAction,
+  lockOutfitForScenesAction, regeneratePreviewAction, setCharacterStateAction, setSceneOutfitAction, setSceneCharactersAction, setSceneStatusAction, updateSceneAction, updateShotAction,
 } from "../../actions";
 import { useAction } from "./useAction";
 
@@ -34,7 +34,7 @@ const DETAIL_FIELDS: [SceneEditable, string, number][] = [
   ["visual_prompt", "وصف الصورة (Prompt)", 3],
 ];
 
-type CharOption = { id: string; name: string; locked: boolean };
+type CharOption = { id: string; name: string; locked: boolean; outfits: { id: string; name: string }[] };
 
 export default function Storyboard(props: {
   projectId: string; scenes: Scene[]; shots: Shot[]; aspect: string;
@@ -65,15 +65,16 @@ export default function Storyboard(props: {
         {props.scenes.map((s, i) => (
           <SceneCard key={s.id} scene={s} aspect={props.aspect} first={i === 0} last={i === props.scenes.length - 1}
             shots={props.shots.filter((x) => x.scene_id === s.id)} cast={props.memory[s.id] ?? []}
-            prompt={props.prompts[s.id] ?? ""} characters={props.characters} />
+            prompt={props.prompts[s.id] ?? ""} characters={props.characters} projectId={props.projectId} sceneCount={props.scenes.length} />
         ))}
       </ol>
     </section>
   );
 }
 
-function SceneCard({ scene, aspect, first, last, shots, cast, prompt, characters }: {
+function SceneCard({ scene, aspect, first, last, shots, cast, prompt, characters, projectId, sceneCount }: {
   scene: Scene; aspect: string; first: boolean; last: boolean; shots: Shot[]; cast: SceneCast[]; prompt: string; characters: CharOption[];
+  projectId: string; sceneCount: number;
 }) {
   const { pending, error, run } = useAction();
   const st = STATUS[scene.status];
@@ -117,7 +118,7 @@ function SceneCard({ scene, aspect, first, last, shots, cast, prompt, characters
               <Field key={`${f}-${scene[f]}`} value={String(scene[f] ?? "")} rows={rows} onSave={(v) => save(f, v)} ariaLabel={label} />
             </div>
           ))}
-          <CastEditor sceneId={scene.id} cast={cast} characters={characters} />
+          <CastEditor projectId={projectId} sceneId={scene.id} position={scene.position} sceneCount={sceneCount} cast={cast} characters={characters} />
           <details>
             <summary className="cursor-pointer text-sm font-semibold text-primary">الإخراج والتفاصيل ({shots.length} لقطات)</summary>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -162,7 +163,9 @@ function Field(props: { value: string; onSave: (v: string) => void; rows?: numbe
   );
 }
 
-function CastEditor({ sceneId, cast, characters }: { sceneId: string; cast: SceneCast[]; characters: CharOption[] }) {
+function CastEditor({ projectId, sceneId, position, sceneCount, cast, characters }: {
+  projectId: string; sceneId: string; position: number; sceneCount: number; cast: SceneCast[]; characters: CharOption[];
+}) {
   const { pending, error, run } = useAction();
   const inScene = new Set(cast.map((c) => c.characterId));
   const toggle = (id: string) => {
@@ -187,6 +190,8 @@ function CastEditor({ sceneId, cast, characters }: { sceneId: string; cast: Scen
       {cast.map((c) => (
         <div key={c.characterId} className="space-y-1 border-t border-line pt-2">
           <div className="text-sm font-semibold">ذاكرة {c.name} في هذا المشهد</div>
+          <OutfitPicker projectId={projectId} sceneId={sceneId} position={position} sceneCount={sceneCount} cast={c}
+            outfits={characters.find((x) => x.id === c.characterId)?.outfits ?? []} />
           <div className="grid gap-2 sm:grid-cols-3">
             {STATE_FIELDS.map(([k, label]) => {
               const eff = c.effective[k];
@@ -204,6 +209,38 @@ function CastEditor({ sceneId, cast, characters }: { sceneId: string; cast: Scen
       ))}
       {cast.length > 0 && <p className="text-xs text-muted">ما تكتبه هنا يستمر في المشاهد التالية حتى يتغيّر.</p>}
       {error && <p className="text-sm text-danger" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function OutfitPicker({ projectId, sceneId, position, sceneCount, cast, outfits }: {
+  projectId: string; sceneId: string; position: number; sceneCount: number; cast: SceneCast; outfits: { id: string; name: string }[];
+}) {
+  const { pending, error, run } = useAction();
+  const [to, setTo] = useState(sceneCount);
+  const eff = cast.effectiveOutfit;
+  if (outfits.length === 0) {
+    return <p className="text-xs text-muted">لا أزياء محفوظة لـ{cast.name}. <Link className="text-primary underline" href={`/characters/${cast.characterId}`}>أضيفي زيًا</Link> لتثبيته على المشاهد.</p>;
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <label className="label m-0" htmlFor={`o-${sceneId}-${cast.characterId}`}>الزي</label>
+      <select id={`o-${sceneId}-${cast.characterId}`} className="field w-auto py-1" disabled={pending} value={cast.outfitId ?? ""}
+        onChange={(e) => run(() => setSceneOutfitAction(sceneId, cast.characterId, e.target.value || null))}>
+        <option value="">{eff && eff.fromPosition !== position ? `يستمر من المشهد ${eff.fromPosition}: ${eff.name}` : "دون زي محدد"}</option>
+        {outfits.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+      </select>
+      {cast.outfitId && (
+        <span className="flex items-center gap-1">
+          <span>ثبّتيه حتى المشهد</span>
+          <input type="number" className="field w-16 py-1" min={position} max={sceneCount} value={to} aria-label="ثبّت الزي حتى المشهد"
+            onChange={(e) => setTo(Number(e.target.value))} />
+          <button className="btn btn-sm" disabled={pending} onClick={() => run(() => lockOutfitForScenesAction(projectId, cast.characterId, cast.outfitId!, position, to))}>
+            🔒 ثبّت
+          </button>
+        </span>
+      )}
+      {error && <p className="w-full text-danger" role="alert">{error}</p>}
     </div>
   );
 }

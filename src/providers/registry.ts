@@ -1,7 +1,9 @@
 import type { Capability, ProviderInfo, ProviderMap, QualityTier } from "./types";
 import { mockTextProvider } from "./mock/text";
 import { mockImageProvider } from "./mock/image";
-import { mockLipSyncProvider, mockMusicProvider, mockSttProvider, mockVideoProvider, mockVoiceProvider } from "./mock/other";
+import { mockMusicProvider, mockSttProvider, mockVideoProvider } from "./mock/other";
+import { mockVoiceProvider } from "./mock/voice";
+import { mockLipSyncProvider } from "./mock/lipsync";
 
 /**
  * Provider router. Phase 1 registers mocks only. Adding a real vendor = one adapter file

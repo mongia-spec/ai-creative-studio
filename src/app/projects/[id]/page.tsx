@@ -7,7 +7,7 @@ import { listProjectAssets } from "@/lib/assets";
 import { estimateFromScenes, spendSummary } from "@/lib/cost";
 import { getPreset, STYLES } from "@/config/platform-presets";
 import { getProjectMemory } from "@/lib/scene-memory";
-import { listCharacters } from "@/lib/characters";
+import { listCharacters, listOutfits } from "@/lib/characters";
 import { composeScenePrompt } from "@/lib/prompt";
 import { ProjectStatus, UnavailableButton } from "../../components";
 import ScriptEditor from "./ScriptEditor";
@@ -72,7 +72,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             aspect={preset.aspectRatio.replace(":", " / ")}
             memory={memory}
             prompts={Object.fromEntries(scenes.map((s) => [s.id, composeScenePrompt(s, memory[s.id] ?? [])]))}
-            characters={characters.map((c) => ({ id: c.id, name: c.name, locked: c.locked }))}
+            characters={await Promise.all(characters.map(async (c) => ({ id: c.id, name: c.name, locked: c.locked, outfits: (await listOutfits(db, c.id)).map((o) => ({ id: o.id, name: o.name })) })))}
           />
         </div>
 

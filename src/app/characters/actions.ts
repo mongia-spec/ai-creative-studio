@@ -81,3 +81,68 @@ export async function removeReferenceAction(id: string, assetId: string) {
     refresh(id);
   });
 }
+
+export async function setReferenceRoleAction(id: string, assetId: string, role: chars.ReferenceRole) {
+  return guard(async () => {
+    await chars.setReferenceRole(await getDb(), id, assetId, role);
+    refresh(id);
+  });
+}
+
+export async function updateVoiceAction(id: string, patch: Partial<Omit<chars.VoiceProfile, "character_id" | "locked">>) {
+  return guard(async () => {
+    await chars.updateVoice(await getDb(), id, patch);
+    refresh(id);
+  });
+}
+
+export async function setVoiceLockedAction(id: string, locked: boolean) {
+  return guard(async () => {
+    await chars.setVoiceLocked(await getDb(), id, locked);
+    refresh(id);
+  });
+}
+
+export async function createOutfitAction(id: string, form: FormData) {
+  return guard(async () => {
+    const db = await getDb();
+    const c = await chars.getCharacter(db, id);
+    if (!c) throw new Error("الشخصية غير موجودة");
+    const f = form.get("image");
+    let assetId: string | null = null;
+    if (f instanceof File && f.size > 0) {
+      if (!f.type.startsWith("image/")) throw new Error("صورة الزي يجب أن تكون صورة");
+      assetId = (await saveAsset(db, { workspaceId: c.workspace_id, source: "upload", name: f.name, mimeType: f.type, bytes: new Uint8Array(await f.arrayBuffer()) })).id;
+    }
+    await chars.createOutfit(db, id, { name: String(form.get("name") ?? ""), description: String(form.get("description") ?? ""), assetId });
+    refresh(id);
+  });
+}
+
+export async function deleteOutfitAction(id: string, outfitId: string) {
+  return guard(async () => {
+    await chars.deleteOutfit(await getDb(), id, outfitId);
+    refresh(id);
+  });
+}
+
+export async function addKnowledgeAction(id: string, input: { title: string; content: string }) {
+  return guard(async () => {
+    await chars.addKnowledge(await getDb(), id, input);
+    refresh(id);
+  });
+}
+
+export async function updateKnowledgeAction(id: string, entryId: string, patch: { title: string; content: string }) {
+  return guard(async () => {
+    await chars.updateKnowledge(await getDb(), id, entryId, patch);
+    refresh(id);
+  });
+}
+
+export async function deleteKnowledgeAction(id: string, entryId: string) {
+  return guard(async () => {
+    await chars.deleteKnowledge(await getDb(), id, entryId);
+    refresh(id);
+  });
+}
