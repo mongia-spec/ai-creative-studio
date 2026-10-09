@@ -261,7 +261,7 @@ function pickAsset(pool: PoolItem[], shot: { text: string; characters: string[];
 
 // ---------- Analysis ----------
 
-export async function analyzeStory(db: Db, args: { workspaceId: string; projectId?: string | null; audioAssetId: string; transcript: string }): Promise<StoryAnalysis> {
+export async function analyzeStory(db: Db, args: { workspaceId: string; projectId?: string | null; audioAssetId: string; transcript: string; extraCharacters?: string[] }): Promise<StoryAnalysis> {
   const audio = await getAsset(db, args.audioAssetId);
   if (!audio || audio.kind !== "audio" || audio.workspace_id !== args.workspaceId) throw new Error("التسجيل غير موجود");
   const transcript = args.transcript.replace(/\s+\n/g, "\n").trim();
@@ -278,12 +278,16 @@ export async function analyzeStory(db: Db, args: { workspaceId: string; projectI
   // Leading/trailing silence belongs to the first/last shot, not a boundary between shots.
   pauses = pauses.filter(([a, b]) => a > 0.05 && b < duration - 0.05);
 
-  const characters = await db.query<{ id: string; name: string }>(`select id, name from characters where workspace_id=$1 order by length(name) desc`, [args.workspaceId]);
+  const library = await db.query<{ id: string; name: string }>(`select id, name from characters where workspace_id=$1`, [args.workspaceId]);
+  // Characters typed by the user for this story join the library ones (created with the project).
+  const extra = (args.extraCharacters ?? []).map((n) => n.trim()).filter((n) => n.length > 1 && n.length <= 80)
+    .filter((n, i, a) => a.indexOf(n) === i && !library.some((c) => c.name === n)).slice(0, 12);
+  const characters = [...library, ...extra.map((name) => ({ id: "", name }))].sort((a, b) => b.name.length - a.name.length);
   const names = characters.map((c) => c.name);
   const pieces = splitSentencesAr(transcript).flatMap(splitShots);
   if (!pieces.length) throw new Error("لم أجد جملًا في النص");
   const { timing, spans } = alignPieces(pieces, duration, pauses);
-  const pool = await assetPool(db, args.workspaceId, args.projectId ?? null, characters);
+  const pool = await assetPool(db, args.workspaceId, args.projectId ?? null, library);
 
   let lastChar: string[] = [];
   let lastPlace: string | null = null;
@@ -350,8 +354,11 @@ async function clipThumbnail(db: Db, workspaceId: string, projectId: string, vid
   });
 }
 
+export const PROJECT_KINDS = [["story", "قصة"], ["film", "فيلم قصير"], ["ad", "إعلان"], ["social", "محتوى سوشيال"], ["educational", "فيديو تعليمي"]] as const;
+
 export async function createStoryProject(db: Db, args: {
   workspaceId: string; analysis: StoryAnalysis; title?: string; platformPreset?: string;
+  kind?: string; style?: string; quality?: "draft" | "standard";
 }): Promise<string> {
   const { analysis: a } = args;
   const { createProject } = await import("./projects");
@@ -360,8 +367,16 @@ export async function createStoryProject(db: Db, args: {
   const project = await createProject(db, {
     workspaceId: args.workspaceId, startType: "audio", inputText: a.transcript, platformPreset: preset.id,
     title: args.title?.trim() || a.transcript.split(/\s+/).slice(0, 6).join(" "),
-    targetDurationSec: Math.min(preset.maxDurationSec, Math.max(5, Math.ceil(a.duration))),
+    targetDurationSec: Math.min(preset.maxDurationSec, Math.max(5, Math.ceil(a.duration))), style: args.style,
   });
+  await db.query(`update projects set kind=$2, quality=$3 where id=$1`,
+    [project.id, PROJECT_KINDS.some(([k]) => k === args.kind) ? args.kind : "story", args.quality === "standard" ? "standard" : "draft"]);
+  // New characters named in the text are created from what the text says about them (no picture yet).
+  const { createCharacter } = await import("./characters");
+  for (const c of a.characters.filter((x) => !x.id)) {
+    const about = a.scenes.flatMap((sc) => sc.shots).filter((s) => s.characters.includes(c.name)).map((s) => s.text).slice(0, 3).join(" ");
+    await createCharacter(db, args.workspaceId, { name: c.name, description: about });
+  }
   await db.query(`update assets set project_id=coalesce(project_id,$2) where id=$1`, [a.audioAssetId, project.id]);
   const shots = a.scenes.flatMap((sc) => sc.shots.map((s, k) => ({ sc, s, k })));
   for (const [i, { sc, s, k }] of shots.entries()) {

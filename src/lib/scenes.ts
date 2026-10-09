@@ -28,7 +28,7 @@ export interface Scene {
   audio_trim_end: number | string | null;
   video_asset_id: string | null;
   video_start: number | string;
-  visual_source: "clip" | "image" | "character" | "placeholder" | null;
+  visual_source: "clip" | "image" | "character" | "placeholder" | "ai_image" | "ai_video" | null;
   motion_prompt: string;
 }
 

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 const KEY_LABEL: Record<SupportKey, string> = {
   identityConsistency: "ثبات الهوية",
+  characterMotion: "حركة الشخصيات",
   referenceImages: "الصور المرجعية",
   voiceConsistency: "ثبات الصوت",
   talkingAvatar: "شخصية متحدثة",

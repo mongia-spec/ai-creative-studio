@@ -7,7 +7,7 @@ export async function recordProviderCall(
   db: Db,
   args: { workspaceId: string; projectId?: string | null; jobId?: string | null; provider: ProviderInfo; usage: Usage },
 ) {
-  const price = args.provider.pricing.unitPriceUsd;
+  const price = args.usage.unitPriceUsd ?? args.provider.pricing.unitPriceUsd;
   await db.query(
     `insert into provider_calls(workspace_id, project_id, job_id, capability, provider, model, is_mock, units, unit_type, unit_price_usd, cost_usd, external_ref)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,

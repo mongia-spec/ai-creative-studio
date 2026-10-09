@@ -5,6 +5,7 @@ import { getProject } from "@/lib/projects";
 import { listScenes, listShots } from "@/lib/scenes";
 import { listExports } from "@/lib/studio";
 import StoryShots from "./StoryShots";
+import GenerationPanel from "./GenerationPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,10 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
       <Link href={`/projects/${id}`} className="text-sm text-primary">→ {project.title}</Link>
       <h1 className="text-2xl font-bold">المشاهد والحركات المتزامنة مع الراوي</h1>
       <div className="rounded-lg bg-warn/20 p-3 text-sm">
-        <p><b>بصدق:</b> الفيديو المصدَّر هنا <b>تركيب من أصولك الموجودة</b> (مقاطع جاهزة، صور، حركة كاميرا، ترجمة، صوتك). لا يولّد حركة جديدة للشخصيات.</p>
+        <p><b>بصدق:</b> الفيديو المصدَّر هنا <b>تركيب من أصولك الموجودة</b> (مقاطع جاهزة، صور، حركة كاميرا، ترجمة، صوتك). وفي الوضع التجريبي الحالي لا يولّد حركة جديدة للشخصيات.</p>
         <p>اللقطات المعلَّمة «تحتاج مزوّد فيديو» جاهز لها وصف الحركة والبرومبت، ويُولَّد الفيديو الحقيقي لها فقط بعد ربط مزوّد بموافقتك.</p>
       </div>
+      <GenerationPanel projectId={id} initialQuality={(project as { quality?: "draft" | "standard" }).quality ?? "draft"} />
       <StoryShots
         projectId={id}
         scenes={scenes.map((s) => ({

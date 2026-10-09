@@ -6,7 +6,7 @@ export type Capability = "text" | "image" | "video" | "voice" | "stt" | "lipsync
 export type QualityTier = "draft" | "standard" | "pro" | "cinematic";
 
 /** Identity-related capabilities, shown honestly per provider. */
-export const SUPPORT_KEYS = ["identityConsistency", "referenceImages", "voiceConsistency", "talkingAvatar", "lipSync"] as const;
+export const SUPPORT_KEYS = ["identityConsistency", "referenceImages", "voiceConsistency", "talkingAvatar", "lipSync", "characterMotion"] as const;
 export type SupportKey = (typeof SUPPORT_KEYS)[number];
 /** none: not offered. simulated: mock output only. partial: best effort, not guaranteed. full: provider guarantees it. */
 export type SupportLevel = "none" | "simulated" | "partial" | "full";
@@ -20,12 +20,16 @@ export interface ProviderInfo {
   /** Only dialects the provider actually supports — never assumed. */
   dialects: string[];
   tiers: QualityTier[];
-  pricing: { unitType: string; unitPriceUsd: number };
+  pricing: { unitType: string; unitPriceUsd: number; byResolution?: Record<string, number> };
+  /** Commercial-use status as published by the vendor/model page (shown to users, never assumed). */
+  commercial?: string;
   limits?: Record<string, number>;
   support?: Partial<Record<SupportKey, { level: SupportLevel; note: string }>>;
 }
 
 export interface Usage {
+  /** Actual unit price when it depends on the request (e.g. video resolution). */
+  unitPriceUsd?: number;
   units: number;
   unitType: string;
   model?: string;
@@ -95,6 +99,8 @@ export interface ImageRequest {
   label?: string;
   seed?: string;
   referenceAssetIds?: string[];
+  /** Reference pictures (identity, outfit, place) sent to providers that keep a character consistent. */
+  references?: { bytes: Uint8Array; mimeType: string }[];
 }
 export interface ImageResult {
   bytes: Uint8Array;
@@ -113,9 +119,14 @@ export interface MediaResult {
   mimeType: string;
   durationSec?: number;
 }
+export interface VideoRequest {
+  prompt: string; negativePrompt?: string; image?: { bytes: Uint8Array; mimeType: string };
+  durationSec: number; width: number; height: number; resolution: string;
+}
 export interface VideoProvider {
   info: ProviderInfo;
-  generateVideo(req: { prompt: string; imageAssetId?: string; durationSec: number; width: number; height: number }): Promise<{ result: MediaResult; usage: Usage }>;
+  /** Animate a first frame (`image`) following `prompt`. `resolution` is a provider quality label such as "480p". */
+  generateVideo(req: VideoRequest): Promise<{ result: MediaResult; usage: Usage }>;
 }
 export interface VoiceRequest {
   text: string;

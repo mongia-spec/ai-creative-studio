@@ -17,12 +17,18 @@ const SOURCE: Record<StoryAnalysis["scenes"][number]["shots"][number]["asset"]["
 const TRANSFORMERS = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
 const MODELS = [["onnx-community/whisper-base", "سريع (نحو 80 ميغابايت)"], ["onnx-community/whisper-small", "أدق (نحو 250 ميغابايت)"]] as const;
 
-export default function StoryWizard({ audio, presets }: { audio: { id: string; name: string; duration: number | null }[]; presets: { id: string; label: string }[] }) {
+type Opt = { id: string; label: string };
+export default function StoryWizard({ audio, presets, styles, kinds }: { audio: { id: string; name: string; duration: number | null }[]; presets: Opt[]; styles: Opt[]; kinds: Opt[] }) {
   const router = useRouter();
   const [audioId, setAudioId] = useState(audio[0]?.id ?? "");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
   const [preset, setPreset] = useState("youtube-video");
+  const [names, setNames] = useState("");
+  const [kind, setKind] = useState(kinds[0]?.id ?? "story");
+  const [style, setStyle] = useState(styles[0]?.id ?? "cinematic");
+  const [quality, setQuality] = useState<"draft" | "standard">("draft");
+  const characterNames = names.split(/[،,\n]/).map((n) => n.trim()).filter(Boolean);
   const [analysis, setAnalysis] = useState<StoryAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [asr, setAsr] = useState<string | null>(null);
@@ -54,11 +60,11 @@ export default function StoryWizard({ audio, presets }: { audio: { id: string; n
 
   const analyze = () => start(async () => {
     setError(null);
-    const r = await analyzeStoryAction(audioId, text);
+    const r = await analyzeStoryAction(audioId, text, characterNames);
     if (r.ok) setAnalysis(r.analysis); else { setAnalysis(null); setError(r.error); }
   });
   const create = () => start(async () => {
-    const r = await createStoryProjectAction({ audioAssetId: audioId, transcript: text, title, platformPreset: preset });
+    const r = await createStoryProjectAction({ audioAssetId: audioId, transcript: text, title, platformPreset: preset, characters: characterNames, kind, style, quality });
     if (r.ok) router.push(`/projects/${r.projectId}/story`); else setError(r.error);
   });
   const shots = analysis?.scenes.flatMap((s) => s.shots) ?? [];
@@ -90,6 +96,11 @@ export default function StoryWizard({ audio, presets }: { audio: { id: string; n
         {asr && <p className="text-sm" role="status">{asr}</p>}
         <textarea dir="rtl" className="field min-h-36 text-lg leading-loose" value={text} onChange={(e) => { setText(e.target.value); setAnalysis(null); }}
           aria-label="النص المقروء" placeholder="الصقي نص الفقرة هنا…" />
+        <label className="block space-y-1">
+          <span className="label">أسماء الشخصيات في النص (اختياري، مفصولة بفواصل)</span>
+          <input className="field" value={names} onChange={(e) => { setNames(e.target.value); setAnalysis(null); }} aria-label="أسماء الشخصيات" placeholder="مثال: ليلى، الجد، البائع" />
+          <span className="text-xs text-muted">الشخصيات الجديدة تُنشأ تلقائيًا من وصف النص، ويمكن رفع صور مرجعية لها لاحقًا. شخصيات مكتبتك تُعرف تلقائيًا.</span>
+        </label>
         <button className="btn btn-primary" disabled={pending || !audioId || text.trim().length < 3} onClick={analyze}>{pending && !analysis ? "جارٍ التحليل…" : "🔎 حلّلي وقسّمي إلى مشاهد"}</button>
       </section>
 
@@ -127,6 +138,13 @@ export default function StoryWizard({ audio, presets }: { audio: { id: string; n
               </ol>
             </div>
           ))}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <select className="field" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="نوع المشروع">{kinds.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</select>
+            <select className="field" value={style} onChange={(e) => setStyle(e.target.value)} aria-label="الأسلوب البصري">{styles.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</select>
+            <select className="field" value={quality} onChange={(e) => setQuality(e.target.value as "draft" | "standard")} aria-label="الجودة">
+              <option value="draft">مسودة 480p (الأرخص)</option><option value="standard">قياسي 720p</option>
+            </select>
+          </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان المشروع (اختياري)" aria-label="عنوان المشروع" />
             <select className="field" value={preset} onChange={(e) => setPreset(e.target.value)} aria-label="المنصة">

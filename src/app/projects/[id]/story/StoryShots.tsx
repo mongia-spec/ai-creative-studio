@@ -14,6 +14,8 @@ const BADGE: Record<string, [string, string]> = {
   image: ["🖼️ صورة مرفوعة + حركة كاميرا", "bg-secondary/20"],
   character: ["👤 صورة الشخصية + حركة كاميرا", "bg-secondary/20"],
   placeholder: ["⬜ صورة مؤقتة · تحتاج أصلًا أو مزوّد فيديو", "bg-warn/30"],
+  ai_image: ["✨ صورة مولّدة بالذكاء الاصطناعي", "bg-primary/15"],
+  ai_video: ["✨ حركة مولّدة بالذكاء الاصطناعي", "bg-primary/25"],
 };
 
 export default function StoryShots({ projectId, scenes, media, exports }: {
