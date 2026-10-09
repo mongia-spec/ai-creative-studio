@@ -10,7 +10,17 @@ export async function askCharacterAction(args: {
 }): Promise<AskResponse> {
   try {
     if (!["text", "voice", "avatar"].includes(args.tier)) throw new Error("مستوى غير معروف");
-    const r = await askCharacter(await getDb(), { ...args, channel: args.channel === "player" ? "player" : "test" });
+    const db = await getDb();
+    let tier = args.tier;
+    if (args.channel === "player" && args.projectId) {
+      // Creator controls apply to viewers in the player.
+      const { capTier, getSettings } = await import("@/lib/interactive");
+      const s = await getSettings(db, args.projectId);
+      if (!s.allowAsk) throw new Error("الأسئلة مغلقة في هذا الفيديو");
+      if (s.askable.length && !s.askable.includes(args.characterId)) throw new Error("هذه الشخصية لا تستقبل أسئلة في هذا الفيديو");
+      tier = capTier(tier, s.maxTier);
+    }
+    const r = await askCharacter(db, { ...args, tier, channel: args.channel === "player" ? "player" : "test" });
     return { ok: true, ...r };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "حدث خطأ غير متوقع" };

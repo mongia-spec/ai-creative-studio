@@ -23,9 +23,12 @@ function getRecognition(): (new () => SR) | null {
 export default function AskPanel(props: {
   characterId: string; characterName: string; avatarAssetId: string | null; channel: "test" | "player"; projectId?: string | null;
   defaultTier?: Tier; compact?: boolean; showSources?: boolean; onTurn?: (t: Turn) => void;
+  /** Creator controls (player): highest tier offered and whether the mic is allowed. */
+  maxTier?: Tier; allowMic?: boolean;
 }) {
+  const tiers = (Object.keys(TIER_LABEL) as Tier[]).slice(0, (Object.keys(TIER_LABEL) as Tier[]).indexOf(props.maxTier ?? "avatar") + 1);
   const [question, setQuestion] = useState("");
-  const [tier, setTier] = useState<Tier>(props.defaultTier ?? "text");
+  const [tier, setTier] = useState<Tier>(props.defaultTier && (["text", "voice", "avatar"] as Tier[]).indexOf(props.defaultTier) <= (["text", "voice", "avatar"] as Tier[]).indexOf(props.maxTier ?? "avatar") ? props.defaultTier : props.maxTier ?? "text");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +94,7 @@ export default function AskPanel(props: {
                 </div>
                 {props.showSources && (
                   <div className="text-xs text-muted">
-                    {t.r.inScope ? "ضمن المعرفة" : "خارج المعرفة: أعادت الحديث للموضوع"}
+                    {t.r.safety ? "🛡️ رد آمن ثابت (موضوع حساس)" : t.r.inScope ? "ضمن المعرفة" : "خارج المعرفة: أعادت الحديث للموضوع"}
                     {t.r.cached && " · ♻️ من الذاكرة المؤقتة"}{t.r.usedContext && " · فهمت السؤال من السياق السابق"}
                     {t.r.sources.length > 0 && <ul className="list-disc ps-5">{t.r.sources.map((s, k) => <li key={k}>«{s.title}»: {s.text}</li>)}</ul>}
                     {t.r.notes.map((n) => <p key={n}>{n}</p>)}
@@ -106,11 +109,11 @@ export default function AskPanel(props: {
       <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); ask(); }}>
         <input className="field min-w-0 flex-1" value={question} onChange={(e) => setQuestion(e.target.value)} aria-label={`سؤال إلى ${props.characterName}`}
           placeholder={`اسأل ${props.characterName}…`} disabled={pending} />
-        {micSupported && (
+        {micSupported && props.allowMic !== false && (
           <button type="button" className={`btn btn-sm ${listening ? "btn-primary" : ""}`} onClick={mic} aria-label="اسأل بصوتك">{listening ? "⏹" : "🎙️"}</button>
         )}
         <select className="field w-auto py-1 text-sm" value={tier} onChange={(e) => setTier(e.target.value as Tier)} aria-label="طريقة الإجابة">
-          {(Object.keys(TIER_LABEL) as Tier[]).map((k) => <option key={k} value={k}>{TIER_LABEL[k]}</option>)}
+          {tiers.map((k) => <option key={k} value={k}>{TIER_LABEL[k]}</option>)}
         </select>
         <button className="btn btn-sm btn-primary" disabled={pending || !question.trim()}>{pending ? "…" : "اسأل"}</button>
         {turns.length > 0 && (

@@ -112,6 +112,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           <section className="card space-y-2 p-4">
             <h2 className="font-bold">الخطوات التالية</h2>
             <Link href={`/play/${project.id}`} className="btn btn-primary w-full justify-between">▶ المشغّل التفاعلي <span className="text-xs">اسأل الشخصيات</span></Link>
+            <Link href={`/projects/${project.id}/interactive`} className="btn w-full justify-between">⚙️ إعداد التفاعل <span className="text-xs">أسئلة · تفرّع · نقاط</span></Link>
             <Link href={`/projects/${project.id}/social`} className="btn w-full justify-between">📱 استوديو السوشيال <span className="text-xs">Hooks · CTA · منصات</span></Link>
             <UnavailableButton label="توليد صور حقيقية" status="PROVIDER_REQUIRED" />
             <UnavailableButton label="تعليق صوتي عربي" status="PROVIDER_REQUIRED" />

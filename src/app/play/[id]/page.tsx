@@ -7,6 +7,7 @@ import { getProjectMemory } from "@/lib/scene-memory";
 import { getIdentityPack, listKnowledge } from "@/lib/characters";
 import { getPreset } from "@/config/platform-presets";
 import Player from "./Player";
+import { getSettings, listInteractions } from "@/lib/interactive";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,14 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
     return { id: cid, name: pack.character.name, avatarAssetId: pack.primaryAssetId, knowledge: (await listKnowledge(db, cid, id)).length };
   }));
   const preset = getPreset(project.platform_preset);
+  const [settings, interactions] = await Promise.all([getSettings(db, id), listInteractions(db, id)]);
+  const askable = settings.allowAsk ? characters.filter((c) => !settings.askable.length || settings.askable.includes(c.id)) : [];
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link href={`/projects/${id}`} className="text-sm text-primary">→ {project.title}</Link>
-        <span className="text-xs text-muted">مشغّل تفاعلي · المعاينات تجريبية حتى يُضاف مزوّد صور</span>
+        <span className="flex items-center gap-2 text-xs text-muted">مشغّل تفاعلي · المعاينات تجريبية
+          <Link href={`/projects/${id}/interactive`} className="btn btn-sm">⚙️ إعداد التفاعل</Link></span>
       </div>
       {scenes.length === 0 ? <p className="card p-6 text-center text-muted">لا مشاهد بعد.</p> : (
         <Player
@@ -37,7 +41,9 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
             subtitle: s.dialogue || s.narration || s.description, durationSec: Number(s.duration_sec),
             cast: (memory[s.id] ?? []).map((c) => c.characterId),
           }))}
-          characters={characters}
+          characters={askable}
+          settings={{ allowMic: settings.allowMic, maxTier: settings.maxTier }}
+          interactions={interactions.map((i) => ({ id: i.id, sceneId: i.scene_id, atSec: i.at_sec, kind: i.kind, prompt: i.prompt, choices: i.choices }))}
         />
       )}
     </div>

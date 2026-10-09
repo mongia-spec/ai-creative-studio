@@ -5,6 +5,7 @@ import { recordProviderCall } from "./cost";
 import { getIdentityPack, listKnowledge } from "./characters";
 import { normalizeArabic, rankPassages, splitSentencesAr, stem, tokens, type Passage } from "./arabic";
 import { animate, speak, voiceSettings } from "./talking";
+import { screenQuestion } from "./safety";
 
 /**
  * Conversational character. Answers come only from the character's knowledge base (plus the
@@ -25,6 +26,8 @@ export interface AskResult {
   audioAssetId: string | null;
   videoAssetId: string | null;
   notes: string[];
+  /** Set when the safety screen answered instead of the knowledge base. */
+  safety: string | null;
 }
 
 const SMALL_TALK: [RegExp, (name: string, intro: string, topics: string) => string][] = [
@@ -75,8 +78,11 @@ export async function askCharacter(db: Db, args: {
   let sources: AskResult["sources"] = [];
   const norm = normalizeArabic(question);
   const small = SMALL_TALK.find(([re]) => re.test(norm));
+  const safe = screenQuestion(question);
 
-  if (small && tokens(question).filter((t) => !/^(السلام|عليكم|مرحبا|اهلا|شكرا|اسمك|انت)$/.test(t)).length <= 1) {
+  if (safe) {
+    answer = safe.reply;
+  } else if (small && tokens(question).filter((t) => !/^(السلام|عليكم|مرحبا|اهلا|شكرا|اسمك|انت)$/.test(t)).length <= 1) {
     answer = small[1](c.name, c.description ? `، ${c.description}` : "", topicText);
     inScope = true;
   } else {
@@ -147,5 +153,5 @@ export async function askCharacter(db: Db, args: {
     `insert into conversation_messages(conversation_id, role, text, tier, in_scope, cached, source_ids, audio_asset_id, video_asset_id)
      values ($1,'character',$2,$3,$4,$5,$6,$7,$8)`,
     [conversationId, answer, tier, inScope, cached, [...new Set(sources.map((s) => s.id))], audioAssetId, videoAssetId]);
-  return { conversationId, answer, inScope, cached, usedContext, sources, audioAssetId, videoAssetId, notes };
+  return { conversationId, answer, inScope, cached, usedContext, sources, audioAssetId, videoAssetId, notes, safety: safe?.topic ?? null };
 }
