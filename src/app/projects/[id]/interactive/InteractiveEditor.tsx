@@ -110,7 +110,7 @@ export default function InteractiveEditor(props: {
 }) {
   const { pending, run } = useAction();
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <Settings projectId={props.projectId} settings={props.settings} characters={props.characters} />
       <section className="space-y-3">
         {props.scenes.map((s) => {

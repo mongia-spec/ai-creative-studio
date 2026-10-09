@@ -28,7 +28,7 @@ export default async function CharacterTestPage({ params }: { params: Promise<{ 
       <Link href={`/characters/${id}`} className="text-sm text-primary">→ {c.name}</Link>
       <h1 className="text-2xl font-bold">وضع اختبار {c.name}</h1>
       <p className="text-muted">جرّبي الأسئلة والصوت واللهجة والشخصية المتحدثة هنا، دون إعادة توليد أي فيلم أو مشهد.</p>
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section className="card space-y-3 p-4">
           <h2 className="font-bold">اسأل {c.name}</h2>
           {knowledge.length === 0 && (

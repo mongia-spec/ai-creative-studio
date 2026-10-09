@@ -72,7 +72,7 @@ export default function SocialStudio(props: {
       <section className="card space-y-3 p-4">
         <h2 className="font-bold">تصدير لعدة منصات من الأصول نفسها</h2>
         <p className="text-sm text-muted">اختاري المنصات. الإطار المتقطع هو المنطقة الآمنة التي لا تغطيها أزرار المنصة، والترجمة تبقى داخلها. إعادة التأطير محلية ومجانية.</p>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-3 items-start gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {props.presets.map((p) => (
             <label key={p.id} className={`cursor-pointer rounded-lg border p-1 ${sel.includes(p.id) ? "border-primary ring-2 ring-primary" : "border-line"}`}>
               <input type="checkbox" className="sr-only" checked={sel.includes(p.id)} onChange={() => toggle(p.id)} aria-label={p.label} />

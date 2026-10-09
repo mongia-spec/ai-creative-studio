@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { DIALECTS } from "@/config/character-fields";
-import { talkingPhotoAction, type TalkResult } from "./actions";
+import { previewVoiceAction, talkingPhotoAction, type TalkResult } from "./actions";
 
 type CharOpt = { id: string; name: string; cover: string | null };
 
@@ -16,6 +16,14 @@ export default function TalkingPhotoForm({ characters, initialCharacter }: { cha
   const recRef = useRef<MediaRecorder | null>(null);
   const [recError, setRecError] = useState<string | null>(null);
   const selected = characters.find((c) => c.id === characterId);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [preview, setPreview] = useState<{ ok: true; audioAssetId: string } | { ok: false; error: string } | null>(null);
+  function previewVoice() {
+    if (!formRef.current) return;
+    const fd = new FormData(formRef.current);
+    fd.set("characterId", characterId);
+    start(async () => setPreview(await previewVoiceAction(fd)));
+  }
 
   async function toggleRecord() {
     setRecError(null);
@@ -44,8 +52,8 @@ export default function TalkingPhotoForm({ characters, initialCharacter }: { cha
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <form action={submit} className="card space-y-4 p-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <form ref={formRef} action={submit} className="card space-y-4 p-4">
         <div>
           <label className="label" htmlFor="tp-char">الشخصية</label>
           <select id="tp-char" className="field" value={characterId} onChange={(e) => setCharacterId(e.target.value)}>
@@ -90,8 +98,13 @@ export default function TalkingPhotoForm({ characters, initialCharacter }: { cha
             <button type="button" className={`btn btn-sm ${mode === "audio" ? "btn-primary" : ""}`} aria-pressed={mode === "audio"} onClick={() => setMode("audio")}>صوت مسجّل</button>
           </div>
           {mode === "text" ? (
-            <textarea name="text" dir="rtl" className="field min-h-28 text-lg leading-loose" aria-label="النص"
-              placeholder="مرحبًا يا أصدقائي، أنا سالمة. هيّا نتعلّم معًا!" />
+            <div className="space-y-2">
+              <textarea name="text" dir="rtl" className="field min-h-28 text-lg leading-loose" aria-label="النص"
+                placeholder="مرحبًا يا أصدقائي، هيّا نتعلّم معًا!" />
+              <button type="button" className="btn btn-sm" disabled={pending} onClick={previewVoice}>🔊 معاينة الصوت أولًا</button>
+              {preview?.ok && <audio key={preview.audioAssetId} src={`/api/assets/${preview.audioAssetId}`} controls autoPlay className="w-full" data-testid="voice-preview" />}
+              {preview && !preview.ok && <p className="text-sm text-danger">{preview.error}</p>}
+            </div>
           ) : (
             <div className="space-y-2">
               <input name="audio" type="file" accept="audio/*" className="text-sm" aria-label="ملف صوتي" />

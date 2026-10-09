@@ -86,7 +86,7 @@ function SceneCard({ scene, aspect, first, last, shots, cast, prompt, characters
   };
 
   return (
-    <li className={`card p-4 ${scene.status === "rejected" ? "opacity-60" : ""}`} aria-busy={pending}>
+    <li id={`scene-${scene.position}`} className={`card p-4 ${scene.status === "rejected" ? "opacity-60" : ""}`} aria-busy={pending}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="rounded-lg bg-primary px-2 py-0.5 text-sm font-bold text-primary-ink">{scene.position}</span>

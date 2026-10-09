@@ -23,7 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/characters" className="btn btn-sm">الشخصيات</Link>
               <Link href="/talking-photo" className="btn btn-sm">الصورة المتحدثة</Link>
               <Link href="/brand" className="btn btn-sm">هوية العلامة</Link>
+              <Link href="/pronunciation" className="btn btn-sm">قاموس النطق</Link>
               <Link href="/providers" className="btn btn-sm">المزوّدات</Link>
+              <Link href="/account" className="btn btn-sm">الحساب</Link>
               <Link href="/projects/new" className="btn btn-sm btn-primary">مشروع جديد</Link>
             </nav>
           </div>

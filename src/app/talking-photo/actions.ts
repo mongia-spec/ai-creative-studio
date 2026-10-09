@@ -42,3 +42,23 @@ export async function talkingPhotoAction(form: FormData): Promise<TalkResult> {
     return { ok: false, error: e instanceof Error ? e.message : "حدث خطأ غير متوقع" };
   }
 }
+
+/** Step "Preview": voice the text first (cached), so the talking clip later reuses this audio. */
+export async function previewVoiceAction(form: FormData): Promise<{ ok: true; audioAssetId: string } | { ok: false; error: string }> {
+  try {
+    const db = await getDb();
+    const ws = await getDefaultWorkspaceId(db);
+    const characterId = String(form.get("characterId") ?? "") || null;
+    let voice = { ...DEFAULT_VOICE, dialect: String(form.get("dialect") ?? ""), speed: Number(form.get("speed") ?? 1) || 1 };
+    if (characterId) {
+      const { getVoice } = await import("@/lib/characters");
+      const { voiceSettings } = await import("@/lib/talking");
+      voice = voiceSettings(await getVoice(db, characterId));
+    }
+    const { speak } = await import("@/lib/talking");
+    const s = await speak(db, { workspaceId: ws, text: String(form.get("text") ?? ""), voice });
+    return { ok: true, audioAssetId: s.assetId };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "حدث خطأ غير متوقع" };
+  }
+}

@@ -66,7 +66,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         ))}
       </ol>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ScriptEditor projectId={project.id} inputText={project.input_text} startType={project.start_type} script={script} />
           <Storyboard
@@ -112,6 +112,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           <section className="card space-y-2 p-4">
             <h2 className="font-bold">الخطوات التالية</h2>
             <Link href={`/play/${project.id}`} className="btn btn-primary w-full justify-between">▶ المشغّل التفاعلي <span className="text-xs">اسأل الشخصيات</span></Link>
+            <Link href={`/projects/${project.id}/timeline`} className="btn w-full justify-between">🎞️ الخط الزمني <span className="text-xs">مسارات · مدد · ترتيب</span></Link>
             <Link href={`/projects/${project.id}/interactive`} className="btn w-full justify-between">⚙️ إعداد التفاعل <span className="text-xs">أسئلة · تفرّع · نقاط</span></Link>
             <Link href={`/projects/${project.id}/social`} className="btn w-full justify-between">📱 استوديو السوشيال <span className="text-xs">Hooks · CTA · منصات</span></Link>
             <UnavailableButton label="توليد صور حقيقية" status="PROVIDER_REQUIRED" />
