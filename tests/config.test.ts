@@ -17,8 +17,9 @@ describe("platform presets", () => {
 });
 
 describe("start options", () => {
-  it("only Idea and Text start projects; mock-backed tools link to their page", () => {
-    expect(START_OPTIONS.filter((o) => o.status === "WORKING").map((o) => o.id)).toEqual(["idea", "text"]);
+  it("Idea, Text and Audio start projects; mock-backed tools link to their page", () => {
+    expect(START_OPTIONS.filter((o) => o.status === "WORKING").map((o) => o.id)).toEqual(["idea", "text", "audio"]);
     for (const o of START_OPTIONS.filter((x) => x.status === "MOCK")) expect(o.href).toMatch(/^\//);
+    expect(START_OPTIONS.find((o) => o.id === "audio")?.href).toBe("/audio-story");
   });
 });

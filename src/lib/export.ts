@@ -97,7 +97,7 @@ export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOp
   let scenes = await db.query<Scene>(`select * from scenes where project_id=$1 and status<>'rejected' order by position`, [projectId]);
   if (opts.fromPos || opts.toPos) scenes = scenes.filter((x) => x.position >= (opts.fromPos ?? 1) && x.position <= (opts.toPos ?? Infinity));
   if (!scenes.length) throw new Error("لا مشاهد للتصدير");
-  const missing = scenes.filter((x) => !x.preview_asset_id).map((x) => x.position);
+  const missing = scenes.filter((x) => !x.preview_asset_id && !x.video_asset_id).map((x) => x.position);
   if (missing.length) throw new Error(`المشاهد ${missing.join("، ")} بلا معاينة. ولّدي معايناتها أولًا`);
   const preset = getPreset(opts.presetId ?? project.platform_preset);
   const size = draftSize(preset);
@@ -112,16 +112,24 @@ export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOp
     const audioIn: { start: number; asset: string; from: number; to: number | null }[] = [];
     let t = 0, idx = 0;
     for (const [i, s] of scenes.entries()) {
-      const a = await getAsset(db, s.preview_asset_id!);
+      const clip = s.video_asset_id ? await getAsset(db, s.video_asset_id) : null;
+      const a = clip ?? await getAsset(db, s.preview_asset_id!);
       if (!a) throw new Error(`معاينة المشهد ${s.position} غير موجودة`);
-      const file = path.join(dir, `s${i}.${EXT_BY_MIME[a.mime_type] ?? "png"}`);
+      const file = path.join(dir, `s${i}.${EXT_BY_MIME[a.mime_type] ?? (clip ? "mp4" : "png")}`);
       await fs.writeFile(file, await readAssetBytes(a));
-      const d = Math.max(1, Number(s.duration_sec));
-      // The still is composed once (one frame), then repeated or moved: much faster than per frame.
-      inputs.push("-i", file);
+      const d = Math.max(0.5, Number(s.duration_sec));
       const frames = Math.round(d * fps);
-      const mf = opts.motion === false ? "" : motionFilter(s.motion, frames, size, fps);
-      const hold = mf || `,loop=loop=${frames - 1}:size=1:start=0`;
+      let hold: string;
+      if (clip) {
+        // A ready clip is used as filmed (its own sound dropped), looped if shorter than the shot.
+        inputs.push("-stream_loop", "-1", "-ss", String(Number(s.video_start ?? 0)), "-t", String(d), "-i", file);
+        hold = `,fps=${fps},trim=duration=${d}`;
+      } else {
+        // The still is composed once (one frame), then repeated or moved: much faster than per frame.
+        inputs.push("-i", file);
+        const mf = opts.motion === false ? "" : motionFilter(s.motion, frames, size, fps);
+        hold = mf || `,loop=loop=${frames - 1}:size=1:start=0`;
+      }
       // Smart reframe: fit the image inside the frame over a blurred fill of itself (no black bars).
       chains.push(
         `[${idx}:v]split[a${i}][b${i}];[a${i}]scale=${size.width}:${size.height}:force_original_aspect_ratio=increase,crop=${size.width}:${size.height},boxblur=20:2[bg${i}];` +

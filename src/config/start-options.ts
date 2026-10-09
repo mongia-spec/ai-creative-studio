@@ -19,7 +19,7 @@ export const START_OPTIONS: StartOption[] = [
   { id: "text", label: "ابدأ من نص", hint: "الصق قصة أو درسًا أو إعلانًا ونقسّمه إلى مشاهد", status: "WORKING" },
   { id: "script", label: "ابدأ من سيناريو", hint: "سيناريو جاهز بالمشاهد والحوار", status: "COMING_SOON" },
   { id: "image", label: "ابدأ من صورة", hint: "", status: "PROVIDER_REQUIRED" },
-  { id: "audio", label: "ابدأ من صوت", hint: "", status: "PROVIDER_REQUIRED" },
+  { id: "audio", label: "ابدأ من تسجيل صوتي", hint: "صوت الراوي ← نص ← مشاهد وحركات متزامنة", status: "WORKING", href: "/audio-story" },
   { id: "video", label: "ابدأ من فيديو", hint: "", status: "COMING_SOON" },
   { id: "create-image", label: "إنشاء صورة", hint: "", status: "PROVIDER_REQUIRED" },
   { id: "animate-image", label: "تحريك صورة", hint: "", status: "PROVIDER_REQUIRED" },

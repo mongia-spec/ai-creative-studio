@@ -113,6 +113,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             <h2 className="font-bold">الخطوات التالية</h2>
             <Link href={`/play/${project.id}`} className="btn btn-primary w-full justify-between">▶ المشغّل التفاعلي <span className="text-xs">اسأل الشخصيات</span></Link>
             <Link href={`/projects/${project.id}/timeline`} className="btn w-full justify-between">🎞️ الخط الزمني <span className="text-xs">مسارات · مدد · ترتيب</span></Link>
+            {project.story != null && <Link href={`/projects/${project.id}/story`} className="btn btn-primary w-full justify-between">🎙️ المشاهد والحركات من التسجيل <span className="text-xs">توقيت · أصول · تصدير</span></Link>}
             <Link href={`/projects/${project.id}/audio`} className="btn w-full justify-between">🎙️ أصوات المشروع <span className="text-xs">تسجيل · رفع · ربط</span></Link>
             <Link href={`/projects/${project.id}/interactive`} className="btn w-full justify-between">⚙️ إعداد التفاعل <span className="text-xs">أسئلة · تفرّع · نقاط</span></Link>
             <Link href={`/projects/${project.id}/social`} className="btn w-full justify-between">📱 استوديو السوشيال <span className="text-xs">Hooks · CTA · منصات</span></Link>

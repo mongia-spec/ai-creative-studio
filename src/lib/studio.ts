@@ -81,7 +81,7 @@ export async function exportDraftVideo(db: Db, projectId: string, options: boole
   const project = await getProject(db, projectId);
   if (!project) throw new Error("المشروع غير موجود");
   const scenes = await listScenes(db, projectId);
-  const signature = scenes.map((s) => [s.position, s.status, s.preview_asset_id, Number(s.duration_sec), s.dialogue || s.narration, s.motion, s.audio_asset_id, Number(s.audio_offset_sec), Number(s.audio_trim_start), s.audio_trim_end === null ? null : Number(s.audio_trim_end)]);
+  const signature = scenes.map((s) => [s.position, s.status, s.preview_asset_id, Number(s.duration_sec), s.dialogue || s.narration, s.motion, s.audio_asset_id, Number(s.audio_offset_sec), Number(s.audio_trim_start), s.audio_trim_end === null ? null : Number(s.audio_trim_end), s.video_asset_id, Number(s.video_start ?? 0)]);
   const [brand] = await db.query(`select * from brand_kits where workspace_id=$1`, [project.workspace_id]);
   const { job, reused } = await enqueueJob(db, {
     workspaceId: project.workspace_id, projectId, type: JOB.EXPORT, maxAttempts: 1,

@@ -26,6 +26,10 @@ export interface Scene {
   audio_offset_sec: number | string;
   audio_trim_start: number | string;
   audio_trim_end: number | string | null;
+  video_asset_id: string | null;
+  video_start: number | string;
+  visual_source: "clip" | "image" | "character" | "placeholder" | null;
+  motion_prompt: string;
 }
 
 export const EDITABLE_FIELDS = [

@@ -16,6 +16,7 @@ export interface Project {
   status: "draft" | "script_ready" | "storyboard_ready" | "approved" | "archived";
   music_asset_id: string | null;
   music_volume: number;
+  story: unknown | null;
   interactive: Record<string, unknown>;
   created_at: string;
   updated_at: string;
