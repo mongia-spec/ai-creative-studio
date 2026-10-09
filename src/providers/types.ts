@@ -80,7 +80,11 @@ export interface TextProvider {
   generateScript(req: ScriptRequest): Promise<{ result: ScriptDraft; usage: Usage }>;
   /** Answer as the character, grounded only in the passages. Empty passages → polite redirect. */
   answer(req: AnswerRequest): Promise<{ result: { text: string; inScope: boolean }; usage: Usage }>;
+  /** Short social copy: opening hooks or calls to action for a topic. */
+  socialCopy(req: SocialCopyRequest): Promise<{ result: string[]; usage: Usage }>;
 }
+
+export interface SocialCopyRequest { kind: "hook" | "cta"; topic: string; platform: string; count: number; language: string }
 
 // ---------- Image ----------
 export interface ImageRequest {

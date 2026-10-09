@@ -5,9 +5,10 @@ import Link from "next/link";
 import type { Scene, SceneEditable } from "@/lib/scenes";
 import type { SceneCast } from "@/lib/scene-memory";
 import { STATE_FIELDS } from "@/config/memory-fields";
+import { MOTIONS } from "@/config/motion";
 import {
   addSceneAction, addShotAction, approveAllAction, deleteSceneAction, deleteShotAction, duplicateSceneAction, moveSceneAction,
-  lockOutfitForScenesAction, regeneratePreviewAction, setCharacterStateAction, setSceneOutfitAction, setSceneCharactersAction, setSceneStatusAction, updateSceneAction, updateShotAction,
+  lockOutfitForScenesAction, regeneratePreviewAction, setSceneMediaAction, setCharacterStateAction, setSceneOutfitAction, setSceneCharactersAction, setSceneStatusAction, updateSceneAction, updateShotAction,
 } from "../../actions";
 import { useAction } from "./useAction";
 
@@ -129,6 +130,7 @@ function SceneCard({ scene, aspect, first, last, shots, cast, prompt, characters
                 </div>
               ))}
             </div>
+            <SceneMedia scene={scene} />
             <ShotsEditor sceneId={scene.id} shots={shots} />
             <div className="mt-3 rounded-lg bg-surface-2 p-2 text-xs">
               <span className="label">الوصف النهائي للصورة (المشهد + الشخصيات + الذاكرة):</span>
@@ -209,6 +211,48 @@ function CastEditor({ projectId, sceneId, position, sceneCount, cast, characters
       ))}
       {cast.length > 0 && <p className="text-xs text-muted">ما تكتبه هنا يستمر في المشاهد التالية حتى يتغيّر.</p>}
       {error && <p className="text-sm text-danger" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+/** Camera motion, scene reference image (sent with the identities) and the scene's own audio. */
+function SceneMedia({ scene }: { scene: Scene }) {
+  const { pending, error, run } = useAction();
+  const upload = (field: "reference_asset_id" | "audio_asset_id", accept: string, label: string) => (
+    <form className="flex flex-wrap items-center gap-2" action={(fd) => run(() => setSceneMediaAction(scene.id, field, fd))}>
+      <input type="file" name="file" accept={accept} className="text-xs" aria-label={label} />
+      <button className="btn btn-sm" disabled={pending}>ارفعي</button>
+    </form>
+  );
+  return (
+    <div className="mt-3 grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-3">
+      <div>
+        <label className="label" htmlFor={`mo-${scene.id}`}>حركة الكاميرا</label>
+        <select id={`mo-${scene.id}`} className="field py-1" value={scene.motion} disabled={pending}
+          onChange={(e) => run(() => updateSceneAction(scene.id, { motion: e.target.value }))}>
+          {MOTIONS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+      </div>
+      <div className="space-y-1">
+        <div className="label">صورة مرجعية للمشهد</div>
+        {scene.reference_asset_id ? (
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/api/assets/${scene.reference_asset_id}`} alt="" className="h-12 w-12 rounded object-cover" />
+            <button className="btn btn-sm" disabled={pending} onClick={() => run(() => setSceneMediaAction(scene.id, "reference_asset_id", null))}>إزالة</button>
+          </div>
+        ) : upload("reference_asset_id", "image/*", "صورة مرجعية للمشهد")}
+      </div>
+      <div className="space-y-1">
+        <div className="label">صوت المشهد (تعليق أو مؤثر)</div>
+        {scene.audio_asset_id ? (
+          <div className="flex items-center gap-2">
+            <audio src={`/api/assets/${scene.audio_asset_id}`} controls className="h-8 w-full" />
+            <button className="btn btn-sm" disabled={pending} onClick={() => run(() => setSceneMediaAction(scene.id, "audio_asset_id", null))}>إزالة</button>
+          </div>
+        ) : upload("audio_asset_id", "audio/*", "صوت المشهد")}
+      </div>
+      {error && <p className="text-sm text-danger sm:col-span-3" role="alert">{error}</p>}
     </div>
   );
 }

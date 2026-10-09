@@ -1,5 +1,5 @@
 import Link from "next/link";
-import ExportPanel from "./ExportPanel";
+import ExportPanel, { ProductionPanel } from "./ExportPanel";
 import { listExports } from "@/lib/studio";
 import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
@@ -8,7 +8,7 @@ import { listScenes, listShots } from "@/lib/scenes";
 import { listProjectJobs } from "@/lib/jobs";
 import { listProjectAssets } from "@/lib/assets";
 import { estimateFromScenes, spendSummary } from "@/lib/cost";
-import { getPreset, STYLES } from "@/config/platform-presets";
+import { getPreset, PLATFORM_PRESETS, STYLES } from "@/config/platform-presets";
 import { getProjectMemory } from "@/lib/scene-memory";
 import { listCharacters, listOutfits } from "@/lib/characters";
 import { composeScenePrompt } from "@/lib/prompt";
@@ -31,6 +31,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const [shots, memory, characters, exports] = await Promise.all([
     listShots(db, scenes.map((s) => s.id)), getProjectMemory(db, id), listCharacters(db, project.workspace_id), listExports(db, id),
   ]);
+  const [brand] = await db.query(`select 1 from brand_kits where workspace_id=$1`, [project.workspace_id]);
   const preset = getPreset(project.platform_preset);
   const active = scenes.filter((s) => s.status !== "rejected");
   const estimate = estimateFromScenes(active);
@@ -103,11 +104,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             <p className="text-sm">المصروف الفعلي لهذا المشروع: <b>${spend.totalUsd.toFixed(2)}</b> ({spend.calls} استدعاء تجريبي)</p>
           </section>
 
-          <ExportPanel projectId={project.id} exports={exports} missingPreviews={scenes.filter((s) => !s.preview_asset_id).length} />
+          <ProductionPanel projectId={project.id} musicAssetId={project.music_asset_id} musicVolume={Number(project.music_volume)} />
+          <ExportPanel projectId={project.id} exports={exports} missingPreviews={scenes.filter((s) => s.status !== "rejected" && !s.preview_asset_id).length}
+            presets={PLATFORM_PRESETS.map((p) => ({ id: p.id, label: p.label, aspectRatio: p.aspectRatio }))} projectPreset={project.platform_preset}
+            sceneCount={scenes.length} hasBrand={!!brand} />
 
           <section className="card space-y-2 p-4">
             <h2 className="font-bold">الخطوات التالية</h2>
             <Link href={`/play/${project.id}`} className="btn btn-primary w-full justify-between">▶ المشغّل التفاعلي <span className="text-xs">اسأل الشخصيات</span></Link>
+            <Link href={`/projects/${project.id}/social`} className="btn w-full justify-between">📱 استوديو السوشيال <span className="text-xs">Hooks · CTA · منصات</span></Link>
             <UnavailableButton label="توليد صور حقيقية" status="PROVIDER_REQUIRED" />
             <UnavailableButton label="تعليق صوتي عربي" status="PROVIDER_REQUIRED" />
             <UnavailableButton label="توليد الفيديو النهائي" status="PROVIDER_REQUIRED" />

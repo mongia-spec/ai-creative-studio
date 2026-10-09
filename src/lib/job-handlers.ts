@@ -3,7 +3,7 @@ import { getProvider } from "@/providers/registry";
 import { getPreset } from "@/config/platform-presets";
 import { recordProviderCall } from "./cost";
 import { getAsset, readAssetBytes, saveAsset } from "./assets";
-import { renderDraftVideo } from "./export";
+import { renderDraftVideo, type ExportOptions } from "./export";
 import type { Project } from "./projects";
 import type { Scene } from "./scenes";
 
@@ -120,6 +120,6 @@ registerJobHandler(JOB.AVATAR, "lipsync", async ({ db, job, setProvider }) => {
 
 registerJobHandler(JOB.EXPORT, "render", async ({ db, job, setProvider }) => {
   setProvider("local-ffmpeg");
-  const asset = await renderDraftVideo(db, job.project_id!, { captions: job.input.captions !== false });
+  const asset = await renderDraftVideo(db, job.project_id!, job.input.options as ExportOptions);
   return { assetId: asset.id };
 });

@@ -229,10 +229,90 @@ export async function lockOutfitForScenesAction(projectId: string, characterId: 
   });
 }
 
-export async function exportDraftAction(projectId: string, captions: boolean): Promise<ActionResult> {
+export async function exportDraftAction(projectId: string, options: import("@/lib/export").ExportOptions): Promise<ActionResult> {
   return guard(async () => {
     const { exportDraftVideo } = await import("@/lib/studio");
-    await exportDraftVideo(await getDb(), projectId, captions);
+    await exportDraftVideo(await getDb(), projectId, options);
     refresh(projectId);
+  });
+}
+
+// ---------- Production ----------
+async function uploadOne(projectId: string, form: FormData, key: string, kind: "image" | "audio") {
+  const db = await getDb();
+  const project = await getProject(db, projectId);
+  if (!project) throw new Error("المشروع غير موجود");
+  const f = form.get(key);
+  if (!(f instanceof File) || f.size === 0) throw new Error("اختاري ملفًا أولًا");
+  if (!f.type.startsWith(kind + "/")) throw new Error(kind === "image" ? "الملف ليس صورة" : "الملف ليس صوتًا");
+  return (await saveAsset(db, { workspaceId: project.workspace_id, projectId, source: "upload", name: f.name, mimeType: f.type, bytes: new Uint8Array(await f.arrayBuffer()) })).id;
+}
+
+export async function setSceneMediaAction(sceneId: string, field: "reference_asset_id" | "audio_asset_id", form: FormData | null) {
+  return guard(async () => {
+    const pid = await projectOfScene(sceneId);
+    const { setSceneMedia } = await import("@/lib/production");
+    const id = form ? await uploadOne(pid, form, "file", field === "audio_asset_id" ? "audio" : "image") : null;
+    await setSceneMedia(await getDb(), sceneId, field, id);
+    refresh(pid);
+  });
+}
+
+export async function setMusicAction(projectId: string, form: FormData | null, volume?: number) {
+  return guard(async () => {
+    const { setProjectMusic } = await import("@/lib/production");
+    const db = await getDb();
+    const current = (await getProject(db, projectId))?.music_asset_id ?? null;
+    const id = form ? await uploadOne(projectId, form, "file", "audio") : volume !== undefined ? current : null;
+    await setProjectMusic(db, projectId, id, volume);
+    refresh(projectId);
+  });
+}
+
+export async function autoDirectAction(projectId: string) {
+  return guard(async () => {
+    const { autoDirect } = await import("@/lib/production");
+    await autoDirect(await getDb(), projectId);
+    refresh(projectId);
+  });
+}
+
+export async function socialCopyAction(projectId: string, kind: "hook" | "cta"): Promise<{ ok: true; lines: string[]; mock: boolean } | { ok: false; error: string }> {
+  try {
+    const { socialCopy } = await import("@/lib/social");
+    return { ok: true, ...(await socialCopy(await getDb(), projectId, kind)) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "حدث خطأ غير متوقع" };
+  }
+}
+
+export async function saveBrandKitAction(form: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    const db = await getDb();
+    const ws = await getDefaultWorkspaceId(db);
+    const { getBrandKit, saveBrandKit } = await import("@/lib/production");
+    let logo = (await getBrandKit(db, ws)).logo_asset_id;
+    const f = form.get("logo");
+    if (f instanceof File && f.size > 0) {
+      if (!f.type.startsWith("image/")) throw new Error("الشعار يجب أن يكون صورة");
+      logo = (await saveAsset(db, { workspaceId: ws, source: "upload", name: f.name, mimeType: f.type, bytes: new Uint8Array(await f.arrayBuffer()) })).id;
+    }
+    if (form.get("removeLogo") === "1") logo = null;
+    const g = (k: string) => String(form.get(k) ?? "");
+    await saveBrandKit(db, ws, { name: g("name"), primary_color: g("primary_color"), text_color: g("text_color"), watermark: g("watermark"), cta: g("cta"), logo_asset_id: logo });
+    revalidatePath("/brand");
+    revalidatePath("/projects/[id]", "page");
+  });
+}
+
+export async function exportMultiAction(projectId: string, presetIds: string[], base: import("@/lib/export").ExportOptions): Promise<ActionResult> {
+  return guard(async () => {
+    if (!presetIds.length) throw new Error("اختاري منصة واحدة على الأقل");
+    const { exportDraftVideo } = await import("@/lib/studio");
+    const db = await getDb();
+    // One after another: each platform is its own cached job, so a failure doesn't lose the others.
+    for (const presetId of presetIds) await exportDraftVideo(db, projectId, { ...base, presetId });
+    refresh(projectId);
+    revalidatePath(`/projects/${projectId}/social`);
   });
 }

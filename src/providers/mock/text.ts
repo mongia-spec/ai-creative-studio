@@ -127,6 +127,20 @@ export const mockTextProvider: TextProvider = {
     languages: ["ar", "en"], dialects: [], tiers: ["draft", "standard", "pro", "cinematic"],
     pricing: { unitType: "characters", unitPriceUsd: 0 },
   },
+  async socialCopy(req) {
+    // Mock: fixed Arabic templates filled with the topic. A real LLM writes fresh, tailored lines.
+    const t = req.topic.trim().slice(0, 60) || "موضوعنا";
+    const hooks = [
+      `هل تعرف السر وراء ${t}؟`, `لن تصدّق ما يحدث في ${t}!`, `٣ أشياء لا يعرفها أحد عن ${t}`,
+      `توقّف! قبل أن تكمل يومك شاهد ${t}`, `هكذا تغيّر ${t} كل شيء`, `جرّبتُ ${t}… وهذه النتيجة`,
+    ];
+    const ctas = [
+      "تابعونا ليصلكم الجزء التالي", "احفظ الفيديو لتعود إليه", "شاركه مع من يحتاجه",
+      `اكتب في التعليقات: ماذا تعرف عن ${t}؟`, "اضغط على الرابط في الوصف لتعرف أكثر", "فعّل الجرس حتى لا يفوتك جديدنا",
+    ];
+    const list = (req.kind === "hook" ? hooks : ctas).slice(0, Math.max(1, Math.min(6, req.count)));
+    return { result: list, usage: { units: req.topic.length, unitType: "characters", model: "templates" } };
+  },
   async answer(req) {
     const result = mockAnswer(req);
     return { result, usage: { units: req.question.length + result.text.length, unitType: "characters", model: "mock-1" } };

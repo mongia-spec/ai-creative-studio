@@ -1,4 +1,5 @@
 import type { Db } from "@/db/client";
+import { MOTIONS, type Motion } from "@/config/motion";
 
 export interface Scene {
   id: string;
@@ -19,11 +20,14 @@ export interface Scene {
   time_of_day: string;
   status: "draft" | "approved" | "rejected";
   preview_asset_id: string | null;
+  motion: Motion;
+  reference_asset_id: string | null;
+  audio_asset_id: string | null;
 }
 
 export const EDITABLE_FIELDS = [
   "title", "description", "location", "characters_text", "narration", "dialogue",
-  "camera", "lighting", "mood", "duration_sec", "visual_prompt", "audio_notes", "time_of_day",
+  "camera", "lighting", "mood", "duration_sec", "visual_prompt", "audio_notes", "time_of_day", "motion",
 ] as const;
 export type SceneEditable = (typeof EDITABLE_FIELDS)[number];
 
@@ -51,6 +55,7 @@ export async function updateScene(db: Db, id: string, patch: Partial<Record<Scen
       v = Number(v);
       if (!(v > 0 && v <= 600)) throw new Error("مدة المشهد يجب أن تكون بين 1 و600 ثانية");
     }
+    if (k === "motion" && !MOTIONS.some(([m]) => m === v)) throw new Error("حركة كاميرا غير معروفة");
     await db.query(`update scenes set ${k}=$2, updated_at=now() where id=$1`, [id, v]);
   }
   // Editing an approved scene sends it back to draft so it gets reviewed again.

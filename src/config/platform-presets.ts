@@ -59,6 +59,42 @@ export const PLATFORM_PRESETS: PlatformPreset[] = [
     safeArea: { top: 5, bottom: 8, left: 5, right: 5 },
     captions: { enabledByDefault: true, position: "bottom" },
   },
+  // Values below are editable defaults; platforms change their limits, so review them periodically.
+  {
+    id: "instagram-story", label: "قصة إنستغرام", platform: "instagram",
+    aspectRatio: "9:16", width: 1080, height: 1920, fps: 30,
+    defaultDurationSec: 15, maxDurationSec: 60,
+    safeArea: { top: 14, bottom: 18, left: 6, right: 6 },
+    captions: { enabledByDefault: true, position: "center" },
+  },
+  {
+    id: "facebook-reel", label: "ريلز فيسبوك", platform: "facebook",
+    aspectRatio: "9:16", width: 1080, height: 1920, fps: 30,
+    defaultDurationSec: 30, maxDurationSec: 90,
+    safeArea: { top: 14, bottom: 20, left: 6, right: 12 },
+    captions: { enabledByDefault: true, position: "center" },
+  },
+  {
+    id: "facebook-story", label: "قصة فيسبوك", platform: "facebook",
+    aspectRatio: "9:16", width: 1080, height: 1920, fps: 30,
+    defaultDurationSec: 15, maxDurationSec: 60,
+    safeArea: { top: 14, bottom: 18, left: 6, right: 6 },
+    captions: { enabledByDefault: true, position: "center" },
+  },
+  {
+    id: "facebook-feed", label: "منشور فيسبوك", platform: "facebook",
+    aspectRatio: "4:5", width: 1080, height: 1350, fps: 30,
+    defaultDurationSec: 60, maxDurationSec: 600,
+    safeArea: { top: 5, bottom: 10, left: 5, right: 5 },
+    captions: { enabledByDefault: true, position: "bottom" },
+  },
+  {
+    id: "facebook-video", label: "فيديو فيسبوك", platform: "facebook",
+    aspectRatio: "16:9", width: 1920, height: 1080, fps: 30,
+    defaultDurationSec: 120, maxDurationSec: 1200,
+    safeArea: { top: 5, bottom: 10, left: 5, right: 5 },
+    captions: { enabledByDefault: true, position: "bottom" },
+  },
 ];
 
 export function getPreset(id: string): PlatformPreset {

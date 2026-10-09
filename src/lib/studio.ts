@@ -6,6 +6,7 @@ import { getProject, saveVersion } from "./projects";
 import { getScene, listScenes, type Scene } from "./scenes";
 import { autoLinkCharacters, getProjectMemory } from "./scene-memory";
 import { composeScenePrompt } from "./prompt";
+import type { ExportOptions } from "./export";
 
 /**
  * High-level studio actions used by the UI. Jobs are queued and, since Phase 1 providers are
@@ -66,6 +67,8 @@ export async function sceneIdentityInput(db: Db, scene: Scene) {
     refs.push(...rows.map((r) => r.asset_id));
     if (c.effectiveOutfit?.assetId) refs.push(c.effectiveOutfit.assetId);
   }
+  // Scene reference (location/composition) comes last, after the identities.
+  if (scene.reference_asset_id) refs.push(scene.reference_asset_id);
   return { prompt: composeScenePrompt(scene, cast), referenceAssetIds: [...new Set(refs)] };
 }
 
@@ -73,14 +76,19 @@ export async function sceneIdentityInput(db: Db, scene: Scene) {
  * Draft video export. The job input carries everything the video depends on (order, previews,
  * durations, captions, platform), so an unchanged project reuses its last export for free.
  */
-export async function exportDraftVideo(db: Db, projectId: string, captions = true): Promise<{ job: Job; reused: boolean }> {
+export async function exportDraftVideo(db: Db, projectId: string, options: boolean | ExportOptions = true): Promise<{ job: Job; reused: boolean }> {
+  const opts: ExportOptions = typeof options === "boolean" ? { captions: options } : options;
   const project = await getProject(db, projectId);
   if (!project) throw new Error("المشروع غير موجود");
   const scenes = await listScenes(db, projectId);
-  const signature = scenes.map((s) => [s.position, s.preview_asset_id, Number(s.duration_sec), s.dialogue || s.narration]);
+  const signature = scenes.map((s) => [s.position, s.status, s.preview_asset_id, Number(s.duration_sec), s.dialogue || s.narration, s.motion, s.audio_asset_id]);
+  const [brand] = await db.query(`select * from brand_kits where workspace_id=$1`, [project.workspace_id]);
   const { job, reused } = await enqueueJob(db, {
     workspaceId: project.workspace_id, projectId, type: JOB.EXPORT, maxAttempts: 1,
-    input: { captions, preset: project.platform_preset, signature },
+    input: {
+      options: opts, preset: opts.presetId ?? project.platform_preset, signature,
+      music: [project.music_asset_id, Number(project.music_volume)], brand: opts.brand ? brand ?? null : null,
+    },
   });
   const done = job.status === "succeeded" ? job : await runJob(db, job.id);
   if (done.status !== "succeeded") throw new Error(done.error ?? "تعذّر التصدير");
@@ -89,5 +97,5 @@ export async function exportDraftVideo(db: Db, projectId: string, captions = tru
 
 export async function listExports(db: Db, projectId: string) {
   return db.query<{ id: string; name: string; created_at: string; byte_size: number; duration_sec: string | null }>(
-    `select id, name, created_at, byte_size, duration_sec from assets where project_id=$1 and source='export' order by created_at desc limit 5`, [projectId]);
+    `select id, name, created_at, byte_size, duration_sec from assets where project_id=$1 and source='export' order by created_at desc limit 12`, [projectId]);
 }
