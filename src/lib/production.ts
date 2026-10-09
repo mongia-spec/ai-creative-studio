@@ -21,7 +21,8 @@ export async function setSceneMedia(db: Db, sceneId: string, field: "reference_a
   const scene = await getScene(db, sceneId);
   if (!scene) throw new Error("المشهد غير موجود");
   if (assetId) await requireAsset(db, assetId, field === "audio_asset_id" ? "audio" : "image", await workspaceOfProject(db, scene.project_id));
-  await db.query(`update scenes set ${field}=$2, updated_at=now() where id=$1`, [sceneId, assetId]);
+  const reset = field === "audio_asset_id" && assetId !== scene.audio_asset_id ? ", audio_offset_sec=0, audio_trim_start=0, audio_trim_end=null" : "";
+  await db.query(`update scenes set ${field}=$2${reset}, updated_at=now() where id=$1`, [sceneId, assetId]);
 }
 
 export async function setProjectMusic(db: Db, projectId: string, assetId: string | null, volume?: number) {

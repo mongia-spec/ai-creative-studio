@@ -244,8 +244,10 @@ async function uploadOne(projectId: string, form: FormData, key: string, kind: "
   if (!project) throw new Error("المشروع غير موجود");
   const f = form.get(key);
   if (!(f instanceof File) || f.size === 0) throw new Error("اختاري ملفًا أولًا");
-  if (!f.type.startsWith(kind + "/")) throw new Error(kind === "image" ? "الملف ليس صورة" : "الملف ليس صوتًا");
-  return (await saveAsset(db, { workspaceId: project.workspace_id, projectId, source: "upload", name: f.name, mimeType: f.type, bytes: new Uint8Array(await f.arrayBuffer()) })).id;
+  let mimeType = f.type;
+  if (kind === "audio") mimeType = (await import("@/lib/audio")).resolveAudioMime(f.type, f.name);
+  else if (!f.type.startsWith("image/")) throw new Error("الملف ليس صورة");
+  return (await saveAsset(db, { workspaceId: project.workspace_id, projectId, source: "upload", name: f.name, mimeType, bytes: new Uint8Array(await f.arrayBuffer()) })).id;
 }
 
 export async function setSceneMediaAction(sceneId: string, field: "reference_asset_id" | "audio_asset_id", form: FormData | null) {

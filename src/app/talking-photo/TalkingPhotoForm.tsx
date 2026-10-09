@@ -2,20 +2,25 @@
 
 import { useRef, useState, useTransition } from "react";
 import { DIALECTS } from "@/config/character-fields";
+import { useRouter } from "next/navigation";
+import AudioRecorder from "@/app/components/AudioRecorder";
 import { previewVoiceAction, talkingPhotoAction, type TalkResult } from "./actions";
 
-type CharOpt = { id: string; name: string; cover: string | null };
+type CharOpt = { id: string; name: string; cover: string | null; voiceSample: string | null };
 
-export default function TalkingPhotoForm({ characters, initialCharacter }: { characters: CharOpt[]; initialCharacter: string }) {
-  const [characterId, setCharacterId] = useState(initialCharacter);
-  const [mode, setMode] = useState<"text" | "audio">("text");
+export default function TalkingPhotoForm({ characters, initialCharacter, audio }: { characters: CharOpt[]; initialCharacter: string; audio: { id: string; name: string }[] }) {
+  const router = useRouter();
+  const [characterId, setCharacterIdRaw] = useState(initialCharacter);
+  const selected = characters.find((c) => c.id === characterId);
+  const [mode, setMode] = useState<"text" | "audio">(selected?.voiceSample ? "audio" : "text");
+  const [audioId, setAudioId] = useState(selected?.voiceSample ?? "");
   const [result, setResult] = useState<TalkResult | null>(null);
   const [pending, start] = useTransition();
-  const [recording, setRecording] = useState(false);
-  const [recorded, setRecorded] = useState<Blob | null>(null);
-  const recRef = useRef<MediaRecorder | null>(null);
-  const [recError, setRecError] = useState<string | null>(null);
-  const selected = characters.find((c) => c.id === characterId);
+  function setCharacterId(id: string) {
+    setCharacterIdRaw(id);
+    const s = characters.find((c) => c.id === id)?.voiceSample;
+    if (s) { setAudioId(s); setMode("audio"); }
+  }
   const formRef = useRef<HTMLFormElement>(null);
   const [preview, setPreview] = useState<{ ok: true; audioAssetId: string } | { ok: false; error: string } | null>(null);
   function previewVoice() {
@@ -25,29 +30,10 @@ export default function TalkingPhotoForm({ characters, initialCharacter }: { cha
     start(async () => setPreview(await previewVoiceAction(fd)));
   }
 
-  async function toggleRecord() {
-    setRecError(null);
-    if (recording) { recRef.current?.stop(); return; }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = () => { stream.getTracks().forEach((t) => t.stop()); setRecorded(new Blob(chunks, { type: rec.mimeType || "audio/webm" })); setRecording(false); };
-      recRef.current = rec;
-      rec.start();
-      setRecording(true);
-    } catch {
-      setRecError("تعذّر الوصول إلى الميكروفون. اسمحي للمتصفح باستخدامه، أو ارفعي ملفًا صوتيًا.");
-    }
-  }
-
   function submit(fd: FormData) {
     fd.set("mode", mode);
     fd.set("characterId", characterId);
-    if (mode === "audio" && recorded && !(fd.get("audio") instanceof File && (fd.get("audio") as File).size > 0)) {
-      fd.set("audio", new File([recorded], "recording.webm", { type: recorded.type }));
-    }
+    fd.set("audioAssetId", mode === "audio" ? audioId : "");
     start(async () => setResult(await talkingPhotoAction(fd)));
   }
 
@@ -107,13 +93,16 @@ export default function TalkingPhotoForm({ characters, initialCharacter }: { cha
             </div>
           ) : (
             <div className="space-y-2">
-              <input name="audio" type="file" accept="audio/*" className="text-sm" aria-label="ملف صوتي" />
-              <div className="flex items-center gap-2">
-                <button type="button" className="btn btn-sm" onClick={toggleRecord}>{recording ? "⏹ أوقفي التسجيل" : "🎙️ سجّلي صوتك"}</button>
-                {recorded && !recording && <audio controls src={URL.createObjectURL(recorded)} className="h-8" />}
-              </div>
-              {recError && <p className="text-sm text-danger">{recError}</p>}
-              <p className="text-xs text-muted">الصوت المرفوع يُستخدم كما هو. لا يُستنسخ صوت أحد دون إذنه.</p>
+              <select className="field" value={audioId} onChange={(e) => setAudioId(e.target.value)} aria-label="التسجيل المستخدم">
+                <option value="">اختاري تسجيلًا من مكتبة الصوت…</option>
+                {audio.map((a) => <option key={a.id} value={a.id}>{a.name}{selected?.voiceSample === a.id ? " (صوت الشخصية)" : ""}</option>)}
+              </select>
+              {audioId && <audio key={audioId} src={`/api/assets/${audioId}`} controls preload="metadata" className="w-full" />}
+              <details className="rounded-lg border border-line p-2">
+                <summary className="cursor-pointer text-sm">🎙️ سجّلي أو ارفعي تسجيلًا جديدًا</summary>
+                <div className="pt-2"><AudioRecorder compact onSaved={(a) => { setAudioId(a.id); router.refresh(); }} /></div>
+              </details>
+              <p className="text-xs text-muted">التسجيل يُستخدم كما هو بدل الصوت الاصطناعي، ويُمرَّر نفسه إلى مزوّد تحريك الشفاه. لا يُستنسخ صوت أحد.</p>
             </div>
           )}
         </fieldset>

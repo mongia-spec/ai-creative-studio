@@ -1,5 +1,6 @@
 "use client";
 
+import SceneAudioPicker from "@/app/components/SceneAudioPicker";
 import { useState } from "react";
 import Link from "next/link";
 import type { Scene, SceneEditable } from "@/lib/scenes";
@@ -218,14 +219,14 @@ function CastEditor({ projectId, sceneId, position, sceneCount, cast, characters
 /** Camera motion, scene reference image (sent with the identities) and the scene's own audio. */
 function SceneMedia({ scene }: { scene: Scene }) {
   const { pending, error, run } = useAction();
-  const upload = (field: "reference_asset_id" | "audio_asset_id", accept: string, label: string) => (
+  const upload = (field: "reference_asset_id", accept: string, label: string) => (
     <form className="flex flex-wrap items-center gap-2" action={(fd) => run(() => setSceneMediaAction(scene.id, field, fd))}>
       <input type="file" name="file" accept={accept} className="text-xs" aria-label={label} />
       <button className="btn btn-sm" disabled={pending}>ارفعي</button>
     </form>
   );
   return (
-    <div className="mt-3 grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-3">
+    <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg border border-line p-3 sm:grid-cols-3">
       <div>
         <label className="label" htmlFor={`mo-${scene.id}`}>حركة الكاميرا</label>
         <select id={`mo-${scene.id}`} className="field py-1" value={scene.motion} disabled={pending}
@@ -250,7 +251,7 @@ function SceneMedia({ scene }: { scene: Scene }) {
             <audio src={`/api/assets/${scene.audio_asset_id}`} controls className="h-8 w-full" />
             <button className="btn btn-sm" disabled={pending} onClick={() => run(() => setSceneMediaAction(scene.id, "audio_asset_id", null))}>إزالة</button>
           </div>
-        ) : upload("audio_asset_id", "audio/*", "صوت المشهد")}
+        ) : <SceneAudioPicker projectId={scene.project_id} sceneId={scene.id} />}
       </div>
       {error && <p className="text-sm text-danger sm:col-span-3" role="alert">{error}</p>}
     </div>

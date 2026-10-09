@@ -109,7 +109,7 @@ export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOp
     const inputs: string[] = [];
     const chains: string[] = [];
     const cues: { caption: string; start: number; end: number }[] = [];
-    const audioIn: { start: number; asset: string }[] = [];
+    const audioIn: { start: number; asset: string; from: number; to: number | null }[] = [];
     let t = 0, idx = 0;
     for (const [i, s] of scenes.entries()) {
       const a = await getAsset(db, s.preview_asset_id!);
@@ -129,7 +129,10 @@ export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOp
         `[bg${i}][fg${i}]overlay=(W-w)/2:(H-h)/2,setsar=1${hold},setpts=N/${fps}/TB,format=yuv420p[v${i}]`);
       idx++;
       cues.push({ caption: sceneCaption(s), start: t, end: t + d });
-      if (opts.audio !== false && s.audio_asset_id) audioIn.push({ start: t, asset: s.audio_asset_id });
+      if (opts.audio !== false && s.audio_asset_id) audioIn.push({
+        start: t + Number(s.audio_offset_sec ?? 0), asset: s.audio_asset_id,
+        from: Number(s.audio_trim_start ?? 0), to: s.audio_trim_end == null ? null : Number(s.audio_trim_end),
+      });
       t += d;
     }
     const parts = scenes.map((_, i) => `[v${i}]`);
@@ -173,7 +176,8 @@ export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOp
       await fs.writeFile(f, await readAssetBytes(a));
       inputs.push("-i", f);
       const ms = Math.round(ai.start * 1000);
-      filter += `;[${idx}:a]aresample=44100,adelay=${ms}|${ms}[sa${k}]`;
+      const trim = ai.from > 0 || ai.to !== null ? `atrim=start=${ai.from}${ai.to !== null ? `:end=${ai.to}` : ""},asetpts=PTS-STARTPTS,` : "";
+      filter += `;[${idx}:a]${trim}aresample=44100,adelay=${ms}|${ms}[sa${k}]`;
       mixes.push(`[sa${k}]`);
       idx++;
     }

@@ -23,6 +23,9 @@ export interface Scene {
   motion: Motion;
   reference_asset_id: string | null;
   audio_asset_id: string | null;
+  audio_offset_sec: number | string;
+  audio_trim_start: number | string;
+  audio_trim_end: number | string | null;
 }
 
 export const EDITABLE_FIELDS = [

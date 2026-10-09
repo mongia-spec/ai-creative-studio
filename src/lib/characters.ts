@@ -18,6 +18,7 @@ export interface Character {
   description: string;
   attributes: CharacterAttributes;
   locked: boolean;
+  voice_sample_asset_id: string | null;
   created_at: string;
   updated_at: string;
 }

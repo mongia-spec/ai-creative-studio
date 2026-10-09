@@ -99,7 +99,7 @@ export function ProductionPanel({ projectId, musicAssetId, musicVolume }: { proj
           </>
         ) : (
           <form className="flex flex-wrap items-center gap-2" action={(fd) => run(() => setMusicAction(projectId, fd))}>
-            <input type="file" name="file" accept="audio/*" className="text-sm" aria-label="ملف الموسيقى" />
+            <input type="file" name="file" accept=".mp3,.wav,.m4a,.aac,.ogg,audio/*" className="text-sm" aria-label="ملف الموسيقى" />
             <button className="btn btn-sm" disabled={pending}>ارفعي</button>
           </form>
         )}

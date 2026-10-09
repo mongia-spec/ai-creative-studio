@@ -23,12 +23,13 @@ export async function talkingPhotoAction(form: FormData): Promise<TalkResult> {
       if (!img.type.startsWith("image/")) throw new Error("الملف المرفوع ليس صورة");
       imageAssetId = (await saveAsset(db, { workspaceId: ws, source: "upload", name: img.name, mimeType: img.type, bytes: new Uint8Array(await img.arrayBuffer()) })).id;
     }
+    // Real recordings come from the audio library (saved there with the speaker's rights confirmation).
     let audioAssetId: string | null = null;
-    const aud = file("audio");
     if (form.get("mode") === "audio") {
-      if (!aud) throw new Error("ارفعي ملفًا صوتيًا أو سجّلي صوتك");
-      if (!aud.type.startsWith("audio/")) throw new Error("الملف ليس صوتًا");
-      audioAssetId = (await saveAsset(db, { workspaceId: ws, source: "upload", name: aud.name || "recording", mimeType: aud.type, bytes: new Uint8Array(await aud.arrayBuffer()) })).id;
+      audioAssetId = String(form.get("audioAssetId") ?? "") || null;
+      if (!audioAssetId) throw new Error("اختاري تسجيلًا من مكتبة الصوت، أو سجّلي صوتك أولًا");
+      const [a] = await db.query(`select 1 from assets where id=$1 and workspace_id=$2 and kind='audio'`, [audioAssetId, ws]);
+      if (!a) throw new Error("التسجيل غير موجود");
     }
     const r = await talkingPhoto(db, {
       workspaceId: ws, characterId, imageAssetId, audioAssetId, text: String(form.get("text") ?? ""),

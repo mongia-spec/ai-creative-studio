@@ -16,7 +16,16 @@ export interface Asset {
   width: number | null;
   height: number | null;
   duration_sec: string | number | null;
+  rights: AudioRights | null;
   created_at: string;
+}
+
+/** Who the voice belongs to and the uploader's confirmation of the right to use it. */
+export interface AudioRights {
+  origin: "recording" | "upload";
+  speaker: string;
+  consent: true;
+  confirmedAt: string;
 }
 
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
@@ -26,6 +35,16 @@ const EXT: Record<string, string> = {
   "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
   "application/pdf": "pdf", "text/plain": "txt",
 };
+
+/** Browsers and phones name the same formats differently (iPhone: audio/x-m4a, some: audio/mp3). */
+const MIME_ALIASES: Record<string, string> = {
+  "audio/x-m4a": "audio/mp4", "audio/m4a": "audio/mp4", "audio/aac": "audio/mp4", "audio/x-aac": "audio/mp4",
+  "audio/mp3": "audio/mpeg", "audio/x-mp3": "audio/mpeg", "audio/wave": "audio/wav", "audio/vnd.wave": "audio/wav",
+};
+export function normalizeMime(mime: string) {
+  const base = mime.split(";")[0].trim().toLowerCase();
+  return MIME_ALIASES[base] ?? base;
+}
 
 export function kindOf(mime: string): Asset["kind"] {
   if (mime.startsWith("image/")) return "image";
@@ -40,10 +59,11 @@ export async function saveAsset(
   input: {
     workspaceId: string; projectId?: string | null; source: Asset["source"]; name?: string;
     mimeType: string; bytes: Uint8Array; width?: number; height?: number; durationSec?: number; providerRef?: unknown;
+    rights?: AudioRights;
   },
 ): Promise<Asset> {
   // Browsers send e.g. "audio/webm;codecs=opus": keep the base type.
-  input = { ...input, mimeType: input.mimeType.split(";")[0].trim().toLowerCase() };
+  input = { ...input, mimeType: normalizeMime(input.mimeType) };
   const ext = EXT[input.mimeType];
   if (!ext) throw new Error(`نوع الملف غير مدعوم: ${input.mimeType}`);
   if (input.bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error("حجم الملف أكبر من 50 ميغابايت");
@@ -61,11 +81,12 @@ export async function saveAsset(
   const key = `${input.workspaceId}/${id}.${ext}`;
   await getStorage().put(key, input.bytes);
   const [row] = await db.query<Asset>(
-    `insert into assets(id, workspace_id, project_id, kind, source, name, mime_type, byte_size, storage_key, checksum, width, height, provider_ref, duration_sec)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning *`,
+    `insert into assets(id, workspace_id, project_id, kind, source, name, mime_type, byte_size, storage_key, checksum, width, height, provider_ref, duration_sec, rights)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning *`,
     [id, input.workspaceId, input.projectId ?? null, kindOf(input.mimeType), input.source, input.name ?? null,
      input.mimeType, input.bytes.byteLength, key, checksum, input.width ?? null, input.height ?? null,
-     input.providerRef ? JSON.stringify(input.providerRef) : null, input.durationSec ?? null],
+     input.providerRef ? JSON.stringify(input.providerRef) : null, input.durationSec ?? null,
+     input.rights ? JSON.stringify(input.rights) : null],
   );
   return row;
 }

@@ -2,6 +2,7 @@ import { getDb } from "@/db/client";
 import { getDefaultWorkspaceId } from "@/lib/workspace";
 import { listCharacters } from "@/lib/characters";
 import { getProvider } from "@/providers/registry";
+import { listAudio } from "@/lib/audio";
 import TalkingPhotoForm from "./TalkingPhotoForm";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export default async function TalkingPhotoPage({ searchParams }: { searchParams:
   const { character } = await searchParams;
   const db = await getDb();
   const ws = await getDefaultWorkspaceId(db);
-  const characters = await listCharacters(db, ws);
+  const [characters, audio] = await Promise.all([listCharacters(db, ws), listAudio(db, ws)]);
   const recent = await db.query<{ id: string; created_at: string }>(
     `select id, created_at from assets where workspace_id=$1 and source='generated' and name='talking' order by created_at desc limit 6`, [ws]);
   const lip = getProvider("lipsync").info;
@@ -28,7 +29,8 @@ export default async function TalkingPhotoPage({ searchParams }: { searchParams:
         </div>
       )}
       <TalkingPhotoForm
-        characters={characters.map((c) => ({ id: c.id, name: c.name, cover: c.cover_asset_id ?? null }))}
+        characters={characters.map((c) => ({ id: c.id, name: c.name, cover: c.cover_asset_id ?? null, voiceSample: c.voice_sample_asset_id ?? null }))}
+        audio={audio.map((a) => ({ id: a.id, name: a.name ?? "تسجيل" }))}
         initialCharacter={characters.some((c) => c.id === character) ? character! : ""}
       />
       {recent.length > 0 && (

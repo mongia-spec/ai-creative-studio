@@ -4,6 +4,8 @@ import { getDb } from "@/db/client";
 import { ATTRIBUTE_FIELDS, characterDescriptor, getCharacter, getVoice, listKnowledge, listOutfits, listReferences } from "@/lib/characters";
 import { listProviders } from "@/providers/registry";
 import CharacterEditor from "./CharacterEditor";
+import VoiceSamplePanel from "./VoiceSamplePanel";
+import { listAudio } from "@/lib/audio";
 import { KnowledgePanel, OutfitsPanel, VoicePanel } from "./IdentityPanels";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +15,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
   const db = await getDb();
   const c = await getCharacter(db, id);
   if (!c) notFound();
-  const [refs, voice, outfits, knowledge, usage] = await Promise.all([
+  const [refs, voice, outfits, knowledge, usage, audio] = await Promise.all([
     listReferences(db, id),
     getVoice(db, id),
     listOutfits(db, id),
@@ -21,7 +23,9 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
     db.query<{ id: string; title: string; scenes: number }>(
       `select p.id, p.title, count(*)::int scenes from scene_characters sc join scenes s on s.id=sc.scene_id
        join projects p on p.id=s.project_id where sc.character_id=$1 and p.status<>'archived' group by p.id, p.title order by p.title`, [id]),
+    listAudio(db, c.workspace_id),
   ]);
+  const sample = audio.find((a) => a.id === c.voice_sample_asset_id);
   const voiceProviders = listProviders().filter((p) => p.capability === "voice")
     .map((p) => ({ id: p.id, name: p.name, isMock: p.isMock, dialects: p.dialects, note: p.support?.voiceConsistency?.note }));
   return (
@@ -40,6 +44,8 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
         descriptor={characterDescriptor(c)}
       />
       <VoicePanel characterId={id} voice={voice} providers={voiceProviders} />
+      <VoiceSamplePanel characterId={id} current={sample ? { id: sample.id, name: sample.name ?? "تسجيل" } : null}
+        library={audio.map((a) => ({ id: a.id, name: a.name ?? "تسجيل" }))} />
       <OutfitsPanel characterId={id} outfits={outfits} />
       <KnowledgePanel characterId={id} entries={knowledge} />
       <section className="card p-4">
