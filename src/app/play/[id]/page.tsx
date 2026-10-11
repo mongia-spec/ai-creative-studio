@@ -35,6 +35,7 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
       {scenes.length === 0 ? <p className="card p-6 text-center text-muted">لا مشاهد بعد.</p> : (
         <Player
           projectId={id}
+          videoAssetId={project.source_video_asset_id ?? null}
           aspect={preset.aspectRatio.replace(":", "/")}
           scenes={scenes.map((s) => ({
             id: s.id, position: s.position, title: s.title, previewAssetId: s.preview_asset_id,
@@ -43,7 +44,7 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
           }))}
           characters={askable}
           settings={{ allowMic: settings.allowMic, maxTier: settings.maxTier }}
-          interactions={interactions.map((i) => ({ id: i.id, sceneId: i.scene_id, atSec: i.at_sec, kind: i.kind, prompt: i.prompt, choices: i.choices }))}
+          interactions={interactions.map((i) => ({ id: i.id, sceneId: i.scene_id, atSec: i.at_sec, kind: i.kind, prompt: i.prompt, choices: i.choices, promptAudioId: i.prompt_audio_asset_id }))}
         />
       )}
     </div>

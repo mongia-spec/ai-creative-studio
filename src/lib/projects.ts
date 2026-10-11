@@ -7,6 +7,7 @@ export interface Project {
   id: string;
   workspace_id: string;
   title: string;
+  source_video_asset_id?: string | null;
   start_type: string;
   input_text: string;
   language: string;

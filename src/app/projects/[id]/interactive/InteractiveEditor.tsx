@@ -6,7 +6,7 @@ import type { Tier } from "@/lib/conversation";
 import { addInteractionAction, deleteInteractionAction, saveSettingsAction } from "./actions";
 import { useAction } from "../useAction";
 
-const KIND: Record<Interaction["kind"], string> = { question: "سؤال باختيارات", branch: "تفرّع (اختيار المسار)", hotspot: "نقطة تفاعلية على الصورة" };
+const KIND: Record<Interaction["kind"], string> = { question: "سؤال باختيارات", branch: "تفرّع (اختيار المسار)", hotspot: "نقطة تفاعلية على الصورة", voice: "سؤال يُجاب بتسجيل صوتي" };
 const TIER: Record<Tier, string> = { text: "نص فقط", voice: "نص وصوت", avatar: "شخصية متحدثة" };
 
 function Settings({ projectId, settings, characters }: { projectId: string; settings: InteractiveSettings; characters: { id: string; name: string }[] }) {
@@ -45,16 +45,16 @@ function Settings({ projectId, settings, characters }: { projectId: string; sett
 type Row = { label: string; correct: boolean; goto: string; feedback: string };
 const emptyRow = (): Row => ({ label: "", correct: false, goto: "", feedback: "" });
 
-function AddForm({ projectId, scene }: { projectId: string; scene: { id: string; duration: number } }) {
+function AddForm({ projectId, scene, videoTime, isVideo }: { projectId: string; scene: { id: string; duration: number }; videoTime: number; isVideo: boolean }) {
   const { pending, error, run } = useAction();
-  const [kind, setKind] = useState<Interaction["kind"]>("question");
+  const [kind, setKind] = useState<Interaction["kind"]>(isVideo ? "voice" : "question");
   const [at, setAt] = useState(Math.max(0, Math.round(scene.duration - 1)));
   const [prompt, setPrompt] = useState("");
   const [rows, setRows] = useState<Row[]>([emptyRow(), emptyRow()]);
   const [xy, setXy] = useState({ x: 50, y: 50 });
   const setRow = (i: number, p: Partial<Row>) => setRows(rows.map((r, k) => (k === i ? { ...r, ...p } : r)));
   const submit = () => {
-    const choices: Choice[] = kind === "hotspot"
+    const choices: Choice[] = kind === "voice" ? [{ label: "", feedback: rows[0].feedback }] : kind === "hotspot"
       ? [{ label: rows[0].label, feedback: rows[0].feedback, x: xy.x, y: xy.y }]
       : rows.map((r) => ({ label: r.label, correct: r.correct, gotoPosition: r.goto ? Number(r.goto) : null, feedback: r.feedback }));
     run(async () => {
@@ -72,10 +72,13 @@ function AddForm({ projectId, scene }: { projectId: string; scene: { id: string;
         <label className="flex items-center gap-1">عند الثانية
           <input type="number" min={0} max={scene.duration} step={0.5} className="field w-20 py-1" value={at} onChange={(e) => setAt(Number(e.target.value))} aria-label="عند الثانية" />
         </label>
+        {isVideo && <button type="button" className="btn btn-sm" onClick={() => setAt(Math.round(videoTime * 2) / 2)}>⏱ لحظة التوقف الحالية ({videoTime.toFixed(1)} ث)</button>}
       </div>
       <input className="field" value={prompt} onChange={(e) => setPrompt(e.target.value)} aria-label="نص السؤال"
         placeholder={kind === "hotspot" ? "عنوان قصير يظهر عند النقطة" : kind === "branch" ? "ماذا يختار البطل الآن؟" : "سؤال عن هذا المشهد"} />
-      {kind === "hotspot" ? (
+      {kind === "voice" ? (
+        <input className="field" placeholder="إجابة نموذجية تظهر بعد التسجيل (اختياري)" value={rows[0].feedback} onChange={(e) => setRow(0, { feedback: e.target.value })} aria-label="الإجابة النموذجية" />
+      ) : kind === "hotspot" ? (
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
           <input className="field" placeholder="اسم الشيء" value={rows[0].label} onChange={(e) => setRow(0, { label: e.target.value })} aria-label="اسم الشيء" />
           <input className="field" placeholder="المعلومة التي تظهر" value={rows[0].feedback} onChange={(e) => setRow(0, { feedback: e.target.value })} aria-label="المعلومة" />
@@ -104,12 +107,24 @@ function AddForm({ projectId, scene }: { projectId: string; scene: { id: string;
   );
 }
 
+type VoiceAnswer = { id: string; interaction_id: string; audio_asset_id: string; name: string; created_at: string };
+
 export default function InteractiveEditor(props: {
+  videoAssetId?: string | null; voiceAnswers?: VoiceAnswer[];
   projectId: string; scenes: { id: string; position: number; title: string; duration: number }[]; characters: { id: string; name: string }[];
   settings: InteractiveSettings; interactions: Interaction[]; stats: Record<string, { answers: number; correct: number }>;
 }) {
   const { pending, run } = useAction();
+  const [videoTime, setVideoTime] = useState(0);
   return (
+    <div className="space-y-4">
+    {props.videoAssetId && (
+      <section className="card space-y-2 p-3">
+        <video src={`/api/assets/${props.videoAssetId}`} controls preload="metadata" playsInline className="w-full rounded-lg" aria-label="الفيديو"
+          onTimeUpdate={(e) => setVideoTime(e.currentTarget.currentTime)} />
+        <p className="text-sm text-muted">أوقفي الفيديو عند اللحظة المناسبة، ثم اضغطي «لحظة التوقف الحالية» وأضيفي السؤال.</p>
+      </section>
+    )}
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <Settings projectId={props.projectId} settings={props.settings} characters={props.characters} />
       <section className="space-y-3">
@@ -131,15 +146,27 @@ export default function InteractiveEditor(props: {
                         {i.choices.map((c, k) => <li key={k}>{c.correct ? "✅ " : "• "}{c.label}{c.gotoPosition ? ` ← المشهد ${c.gotoPosition}` : ""}{c.feedback ? ` · ${c.feedback}` : ""}</li>)}
                       </ul>
                       {st && <p className="text-xs">الإجابات: {st.answers}{i.kind === "question" ? ` · الصحيحة: ${st.correct}` : ""}</p>}
+                      {i.kind === "voice" && (props.voiceAnswers ?? []).filter((a) => a.interaction_id === i.id).length > 0 && (
+                        <details className="mt-1" data-testid="voice-answers">
+                          <summary className="cursor-pointer text-xs text-primary">🎧 استمعي إلى إجابات الطلاب</summary>
+                          <ul className="space-y-1 pt-1">
+                            {(props.voiceAnswers ?? []).filter((a) => a.interaction_id === i.id).map((a) => (
+                              <li key={a.id} className="text-xs"><span className="text-muted" suppressHydrationWarning>{new Date(a.created_at).toLocaleString("ar")}</span>
+                                <audio src={`/api/assets/${a.audio_asset_id}`} controls preload="none" className="mt-0.5 w-full" /></li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
                     </li>
                   );
                 })}
               </ul>
-              <AddForm projectId={props.projectId} scene={s} />
+              <AddForm projectId={props.projectId} scene={s} videoTime={videoTime} isVideo={!!props.videoAssetId} />
             </details>
           );
         })}
       </section>
+    </div>
     </div>
   );
 }

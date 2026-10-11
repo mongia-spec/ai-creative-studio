@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { askCharacterAction, type AskResponse } from "../ask-actions";
 import type { Tier } from "@/lib/conversation";
+import { speakAr, stopSpeaking } from "./speak";
 
 export const TIER_LABEL: Record<Tier, string> = { text: "نص", voice: "صوت", avatar: "شخصية متحدثة" };
 
@@ -23,6 +24,8 @@ function getRecognition(): (new () => SR) | null {
 export default function AskPanel(props: {
   characterId: string; characterName: string; avatarAssetId: string | null; channel: "test" | "player"; projectId?: string | null;
   defaultTier?: Tier; compact?: boolean; showSources?: boolean; onTurn?: (t: Turn) => void;
+  /** Read text answers aloud with the device's voice (free; not the character's saved voice). */
+  browserVoice?: boolean;
   /** Creator controls (player): highest tier offered and whether the mic is allowed. */
   maxTier?: Tier; allowMic?: boolean;
 }) {
@@ -41,6 +44,11 @@ export default function AskPanel(props: {
 
   useEffect(() => setMicSupported(!!getRecognition()), []);
   useEffect(() => endRef.current?.scrollIntoView({ block: "nearest" }), [turns.length]);
+  // Speak each new text answer once with the device voice; stop when the panel closes.
+  useEffect(() => {
+    if (props.browserVoice && last && !last.r.audioAssetId && !last.r.videoAssetId) speakAr(last.r.answer);
+  }, [turns.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => stopSpeaking(), []);
 
   function ask(q = question) {
     if (!q.trim()) return;
@@ -91,6 +99,9 @@ export default function AskPanel(props: {
                 <p className="ms-auto w-fit max-w-[85%] rounded-2xl bg-surface-2 px-3 py-1.5">{t.q}</p>
                 <div className={`w-fit max-w-[90%] rounded-2xl px-3 py-1.5 ${t.r.inScope ? "bg-primary text-primary-ink" : "bg-warn/20"}`} data-testid="answer">
                   <span className="font-semibold">{props.characterName}: </span>{t.r.answer}
+                  {props.browserVoice && !t.r.audioAssetId && !t.r.videoAssetId && (
+                    <button type="button" className="ms-2 align-middle" onClick={() => speakAr(t.r.answer)} aria-label="استمع للإجابة">🔊</button>
+                  )}
                 </div>
                 {props.showSources && (
                   <div className="text-xs text-muted">

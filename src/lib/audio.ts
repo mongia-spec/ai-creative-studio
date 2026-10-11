@@ -28,7 +28,7 @@ export function resolveAudioMime(type: string, name: string) {
   return m;
 }
 
-function probeDuration(file: string): Promise<number | null> {
+export function probeDuration(file: string): Promise<number | null> {
   return new Promise((resolve) => execFile(/*turbopackIgnore: true*/ process.env.FFPROBE_PATH || "ffprobe",
     ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", file], { timeout: 30000 },
     (err, out) => { const d = Number(String(out).trim()); resolve(err || !Number.isFinite(d) ? null : d); }));

@@ -20,7 +20,7 @@ export async function saveSettingsAction(projectId: string, s: ix.InteractiveSet
   return guard(projectId, async () => ix.saveSettings(await getDb(), projectId, s));
 }
 
-export async function addInteractionAction(projectId: string, sceneId: string, input: { kind: ix.Interaction["kind"]; atSec: number; prompt: string; choices: ix.Choice[] }) {
+export async function addInteractionAction(projectId: string, sceneId: string, input: { kind: ix.Interaction["kind"]; atSec: number; prompt: string; choices: ix.Choice[]; promptAudioAssetId?: string | null }) {
   return guard(projectId, async () => ix.addInteraction(await getDb(), sceneId, input));
 }
 
@@ -31,6 +31,20 @@ export async function deleteInteractionAction(projectId: string, id: string) {
 export async function respondAction(interactionId: string, choiceIndex: number) {
   try {
     return { ok: true as const, ...(await ix.respond(await getDb(), interactionId, choiceIndex)) };
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "حدث خطأ غير متوقع" };
+  }
+}
+
+/** A student's spoken answer (recorded in the browser) to a "voice" question. */
+export async function respondVoiceAction(fd: FormData) {
+  try {
+    const f = fd.get("file");
+    if (!(f instanceof File) || f.size === 0) throw new Error("سجّل إجابتك أولًا");
+    const r = await ix.respondVoice(await getDb(), String(fd.get("interactionId")), {
+      bytes: new Uint8Array(await f.arrayBuffer()), type: f.type, student: String(fd.get("student") ?? ""),
+    });
+    return { ok: true as const, ...r };
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : "حدث خطأ غير متوقع" };
   }

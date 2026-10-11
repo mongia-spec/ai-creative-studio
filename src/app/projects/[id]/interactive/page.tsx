@@ -4,7 +4,7 @@ import { getDb } from "@/db/client";
 import { getProject } from "@/lib/projects";
 import { listScenes } from "@/lib/scenes";
 import { getProjectMemory } from "@/lib/scene-memory";
-import { getSettings, interactionStats, listInteractions } from "@/lib/interactive";
+import { getSettings, interactionStats, listInteractions, listVoiceAnswers } from "@/lib/interactive";
 import InteractiveEditor from "./InteractiveEditor";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +14,8 @@ export default async function InteractivePage({ params }: { params: Promise<{ id
   const db = await getDb();
   const project = await getProject(db, id);
   if (!project) notFound();
-  const [scenes, memory, settings, interactions, stats] = await Promise.all([
-    listScenes(db, id), getProjectMemory(db, id), getSettings(db, id), listInteractions(db, id), interactionStats(db, id),
+  const [scenes, memory, settings, interactions, stats, voiceAnswers] = await Promise.all([
+    listScenes(db, id), getProjectMemory(db, id), getSettings(db, id), listInteractions(db, id), interactionStats(db, id), listVoiceAnswers(db, id),
   ]);
   const cast = new Map<string, string>();
   for (const c of Object.values(memory).flat()) cast.set(c.characterId, c.name);
@@ -28,6 +28,8 @@ export default async function InteractivePage({ params }: { params: Promise<{ id
       <h1 className="text-2xl font-bold">إعداد الفيديو التفاعلي</h1>
       <InteractiveEditor
         projectId={id}
+        videoAssetId={project.source_video_asset_id ?? null}
+        voiceAnswers={voiceAnswers}
         scenes={scenes.map((s) => ({ id: s.id, position: s.position, title: s.title, duration: Number(s.duration_sec) }))}
         characters={[...cast].map(([cid, name]) => ({ id: cid, name }))}
         settings={settings}
