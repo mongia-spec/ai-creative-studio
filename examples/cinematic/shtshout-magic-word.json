@@ -1,0 +1,299 @@
+{
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "cast": {
+  "shtshout": {
+   "builtin": "shtshout"
+  },
+  "shtshouta": {
+   "builtin": "shtshouta"
+  },
+  "student": {
+   "name": "مريم"
+  }
+ },
+ "music": "audio/music.wav",
+ "musicVolumeDb": -14,
+ "shots": [
+  {
+   "dur": 3.2,
+   "set": "orchard",
+   "letterbox": true,
+   "camera": {
+    "from": {
+     "zoom": 1.25,
+     "y": -0.05
+    },
+    "to": {
+     "zoom": 1.0,
+     "y": 0
+    },
+    "ease": "out"
+   },
+   "actors": [
+    {
+     "id": "shtshouta",
+     "x": 0.32,
+     "y": 0.86,
+     "size": 0.34,
+     "enter": "pop",
+     "wave": [
+      0.8,
+      3
+     ]
+    },
+    {
+     "id": "shtshout",
+     "x": 0.68,
+     "y": 0.88,
+     "size": 0.38,
+     "enter": "pop",
+     "hop": [
+      1.0,
+      2.0
+     ]
+    }
+   ],
+   "title": {
+    "main": "شتشوت",
+    "sub": "الحلقة التجريبية: الكلمة السحرية"
+   }
+  },
+  {
+   "set": "classroom",
+   "camera": {
+    "from": {
+     "zoom": 1.0
+    },
+    "to": {
+     "zoom": 1.12,
+     "y": 0.02
+    },
+    "ease": "inout"
+   },
+   "actors": [
+    {
+     "id": "shtshout",
+     "x": 0.6,
+     "y": 0.83,
+     "size": 0.4,
+     "enter": "right",
+     "hop": [
+      1.6
+     ]
+    },
+    {
+     "id": "shtshouta",
+     "x": 0.28,
+     "y": 0.84,
+     "size": 0.34
+    }
+   ],
+   "line": {
+    "speaker": "shtshout",
+    "audio": "audio/l1.wav",
+    "text": "أنا شتشوت، الروبوت الذكي! أعرف كل شيء!"
+   }
+  },
+  {
+   "set": "classroom",
+   "camera": {
+    "from": {
+     "zoom": 1.15,
+     "x": 0.08,
+     "y": 0.08
+    },
+    "to": {
+     "zoom": 1.25,
+     "x": 0.12,
+     "y": 0.12
+    },
+    "ease": "inout"
+   },
+   "actors": [
+    {
+     "id": "shtshout",
+     "x": 0.6,
+     "y": 0.83,
+     "size": 0.4
+    },
+    {
+     "id": "shtshouta",
+     "x": 0.28,
+     "y": 0.84,
+     "size": 0.34
+    }
+   ],
+   "line": {
+    "speaker": "student",
+    "audio": "audio/l2.wav",
+    "text": "يا شتشوت، ماذا نقول لمن يساعدنا؟",
+    "at": {
+     "x": 0.83,
+     "y": 0.7
+    }
+   }
+  },
+  {
+   "set": "classroom",
+   "camera": {
+    "from": {
+     "zoom": 1.0
+    },
+    "to": {
+     "zoom": 1.45,
+     "x": 0.06,
+     "y": -0.02
+    },
+    "ease": "snap"
+   },
+   "actors": [
+    {
+     "id": "shtshout",
+     "x": 0.6,
+     "y": 0.83,
+     "size": 0.4
+    },
+    {
+     "id": "shtshouta",
+     "x": 0.28,
+     "y": 0.84,
+     "size": 0.34
+    }
+   ],
+   "line": {
+    "speaker": "shtshout",
+    "audio": "audio/l3.wav",
+    "text": "اشحن بطاريتي… من فضلك؟"
+   }
+  },
+  {
+   "set": "classroom",
+   "camera": {
+    "from": {
+     "zoom": 1.35,
+     "x": -0.13,
+     "y": -0.02
+    },
+    "to": {
+     "zoom": 1.2,
+     "x": -0.1,
+     "y": 0
+    },
+    "ease": "inout"
+   },
+   "actors": [
+    {
+     "id": "shtshout",
+     "x": 0.6,
+     "y": 0.83,
+     "size": 0.4
+    },
+    {
+     "id": "shtshouta",
+     "x": 0.28,
+     "y": 0.84,
+     "size": 0.34,
+     "hop": [
+      0.4
+     ]
+    }
+   ],
+   "line": {
+    "speaker": "shtshouta",
+    "audio": "audio/l4.wav",
+    "text": "لا يا أخي! نقول: شكرًا!"
+   }
+  },
+  {
+   "set": "classroom",
+   "camera": {
+    "from": {
+     "zoom": 1.2,
+     "x": 0.02
+    },
+    "to": {
+     "zoom": 1.0,
+     "x": 0
+    },
+    "ease": "inout"
+   },
+   "actors": [
+    {
+     "id": "shtshout",
+     "x": 0.6,
+     "y": 0.83,
+     "size": 0.4,
+     "wave": [
+      0.4,
+      3.6
+     ]
+    },
+    {
+     "id": "shtshouta",
+     "x": 0.28,
+     "y": 0.84,
+     "size": 0.34,
+     "wave": [
+      0.8,
+      3.6
+     ]
+    }
+   ],
+   "line": {
+    "speaker": "shtshout",
+    "audio": "audio/l5.wav",
+    "text": "شكرًا… كلمة صغيرة، تسعد القلوب!"
+   }
+  },
+  {
+   "dur": 4,
+   "set": "orchard",
+   "camera": {
+    "from": {
+     "zoom": 1.0
+    },
+    "to": {
+     "zoom": 1.08
+    },
+    "ease": "inout"
+   },
+   "actors": [
+    {
+     "id": "shtshouta",
+     "x": 0.32,
+     "y": 0.9,
+     "size": 0.32,
+     "wave": [
+      0.5,
+      4
+     ],
+     "hop": [
+      1.2
+     ]
+    },
+    {
+     "id": "shtshout",
+     "x": 0.68,
+     "y": 0.91,
+     "size": 0.36,
+     "wave": [
+      0.5,
+      4
+     ],
+     "hop": [
+      1.6
+     ]
+    }
+   ],
+   "card": {
+    "lines": [
+     "قيمة الحلقة",
+     "نشكر من يساعدنا 💛"
+    ],
+    "small": "سيناريو وإخراج: الأستاذة منجية · @shtshout"
+   }
+  }
+ ]
+}

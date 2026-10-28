@@ -4,7 +4,8 @@ import { mockImageProvider } from "./mock/image";
 import { mockMusicProvider, mockSttProvider, mockVideoProvider } from "./mock/other";
 import { mockVoiceProvider } from "./mock/voice";
 import { mockLipSyncProvider } from "./mock/lipsync";
-import { falImageProvider, falVideoProvider } from "./fal/adapters";
+import { falImageProvider, falKlingVideoProvider, falVideoProvider } from "./fal/adapters";
+import { spekoConfigured, spekoVoiceProvider } from "./speko/voice";
 import { falConfigured } from "./fal/client";
 
 /**
@@ -26,7 +27,10 @@ const registry: Registry = {
 // Real vendors join only when explicitly enabled (PROVIDERS_MODE=live + their key). Swapping vendor =
 // another adapter here; the app depends on the interfaces only.
 function live(): Partial<Registry> {
-  return falConfigured() ? { image: [falImageProvider()], video: [falVideoProvider()] } : {};
+  const out: Partial<Registry> = {};
+  if (falConfigured()) Object.assign(out, { image: [falImageProvider()], video: [falKlingVideoProvider(), falVideoProvider()] });
+  if (spekoConfigured()) out.voice = [spekoVoiceProvider()];
+  return out;
 }
 const overrides: Partial<Registry> = {};
 /** Tests only: put a provider (e.g. a priced fake) in front for a capability; null removes it. */

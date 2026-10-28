@@ -75,3 +75,40 @@ export function falVideoProvider(fetchImpl?: typeof fetch): VideoProvider {
     },
   };
 }
+
+/**
+ * Cinematic tier: Kling 2.5 Turbo Pro image-to-video on fal.ai (1080p, 5 or 10 s per clip).
+ * Price checked 2026-10-28 on fal.ai learn pages: $0.07 per second ($0.35 per 5 s clip). Configurable via env.
+ * Only used for quality tier "cinematic"; cheaper tiers keep Wan 2.2.
+ */
+export function falKlingVideoProvider(fetchImpl?: typeof fetch): VideoProvider {
+  const price = num("FAL_KLING_PRICE_USD", 0.07);
+  return {
+    info: {
+      id: "fal-kling", name: "fal.ai · Kling 2.5 Turbo Pro (سينمائي)", capability: "video", isMock: false, languages: ["en"], dialects: [],
+      tiers: ["cinematic"], pricing: { unitType: "seconds", unitPriceUsd: price, byResolution: { "1080p": price } },
+      commercial: "مسموح عبر fal.ai (راجعي شروط النموذج في صفحته قبل النشر التجاري)",
+      limits: { maxSecondsPerClip: 10 },
+      support: {
+        characterMotion: { level: "partial", note: "حركة سينمائية واقعية قوية؛ تفاصيل اليد قد تحتاج إعادة" },
+        identityConsistency: { level: "partial", note: "يبدأ من صورة الشخصية المرجعية فتبقى الملامح قريبة داخل المقطع، دون ضمان" },
+      },
+    },
+    async generateVideo(req) {
+      if (!req.image) throw new Error("توليد الفيديو يحتاج إطارًا أول");
+      const model = env("FAL_KLING_MODEL", "fal-ai/kling-video/v2.5-turbo/pro/image-to-video");
+      const duration = req.durationSec > 7 ? "10" : "5";
+      const { data, requestId } = await falRun<{ video: { url: string } }>(model, {
+        image_url: dataUri(req.image), prompt: req.prompt, negative_prompt: req.negativePrompt ?? "blur, distort, low quality, cropped face",
+        duration, cfg_scale: 0.5,
+      }, { fetch: fetchImpl });
+      if (!data.video?.url) throw new Error("fal.ai لم يُرجع فيديو");
+      const file = await falDownload(data.video.url, fetchImpl);
+      const seconds = Number(duration);
+      return {
+        result: { bytes: file.bytes, mimeType: "video/mp4", durationSec: seconds },
+        usage: { units: seconds, unitType: "seconds", unitPriceUsd: price, model, externalRef: requestId },
+      };
+    },
+  };
+}
