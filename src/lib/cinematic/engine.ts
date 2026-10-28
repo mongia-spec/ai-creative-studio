@@ -155,13 +155,18 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;font-family
 .bubble .txt{font:800 64px/1.45 Cairo;color:#1d1d1d}
 .bubble .w{opacity:.0;display:inline-block;transition:none}
 .bubble .tail{position:absolute;bottom:-34px;width:0;height:0;border-left:30px solid transparent;border-right:30px solid transparent;border-top:40px solid #22A699}
+.sub-bar{position:absolute;left:6%;right:6%;bottom:${Math.round(H * 0.075)}px;text-align:center;direction:rtl}
+.sub-bar .who{display:inline-block;background:#FFC93C;color:#1b1b1b;font:800 ${Math.round(H * 0.03)}px Cairo;padding:2px 22px;border-radius:24px;margin-bottom:10px}
+.sub-bar .txt{display:inline-block;background:rgba(10,20,30,.55);border-radius:22px;padding:6px 34px 12px;font:800 ${Math.round(H * 0.05)}px/1.5 Cairo;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+.sub-bar .w{display:inline-block;opacity:0}
+#glow{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen}
 .title{position:absolute;left:0;right:0;text-align:center;direction:rtl}
-.title .main{font:400 ${Math.round(W * 0.2)}px Lalezar,Cairo;color:#fff;text-shadow:0 0 40px rgba(255,201,60,.9),0 8px 0 #17796F}
-.title .sub{font:800 ${Math.round(W * 0.05)}px Cairo;color:#FFE29A;margin-top:10px;text-shadow:0 4px 12px rgba(0,0,0,.5)}
+.title .main{font:400 ${Math.round(Math.min(W, H) * 0.2)}px Lalezar,Cairo;color:#fff;text-shadow:0 0 40px rgba(255,201,60,.9),0 8px 0 #17796F}
+.title .sub{font:800 ${Math.round(Math.min(W, H) * 0.05)}px Cairo;color:#FFE29A;margin-top:10px;text-shadow:0 4px 12px rgba(0,0,0,.5)}
 .card{position:absolute;left:8%;right:8%;background:rgba(255,250,240,.94);border-radius:48px;border:8px solid #22A699;padding:44px 30px;text-align:center;direction:rtl;box-shadow:0 20px 50px rgba(0,0,0,.3)}
-.card .l{font:800 ${Math.round(W * 0.062)}px/1.5 Cairo;color:#1E5631}
-.card .l:first-child{color:#17796F;font-family:Lalezar,Cairo;font-size:${Math.round(W * 0.085)}px}
-.card .s{font:700 ${Math.round(W * 0.036)}px Cairo;color:#6b5a45;margin-top:18px}
+.card .l{font:800 ${Math.round(Math.min(W, H) * 0.058)}px/1.5 Cairo;color:#1E5631}
+.card .l:first-child{color:#17796F;font-family:Lalezar,Cairo;font-size:${Math.round(Math.min(W, H) * 0.08)}px}
+.card .s{font:700 ${Math.round(Math.min(W, H) * 0.034)}px Cairo;color:#6b5a45;margin-top:18px}
 </style></head><body>
 <div id="stage">
   <div class="layer" id="back"></div>
@@ -169,7 +174,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;font-family
   <div class="layer" id="mid"></div>
   <div class="layer" id="front"></div>
   <canvas id="dust" width="${W}" height="${H}"></canvas>
-  <div id="grade"></div><div id="vig"></div>
+  <div id="glow"></div><div id="grade"></div><div id="vig"></div>
   <canvas id="grain" width="${Math.round(W / 4)}" height="${Math.round(H / 4)}"></canvas>
   <div id="ui"></div>
   <div class="bar" id="barT" style="top:0"></div><div class="bar" id="barB" style="bottom:0"></div>
@@ -197,7 +202,9 @@ function mount(i){
     const h=(a.size||.42)*H,w=h*400/720;Object.assign(d.style,{width:w+'px',height:h+'px',left:(a.x*W-w/2)+'px',top:(a.y*H-h)+'px'});
     d.innerHTML=CAST[a.id]||'';mid.appendChild(d);});
   ui.innerHTML='';
-  if(s.line){const b=document.createElement('div');b.className='bubble';b.id='bub';
+  if(s.line&&s.hasBg){const b=document.createElement('div');b.className='sub-bar';b.id='sub';
+    b.innerHTML='<div class="who">'+(NAMES[s.line.speaker]||s.line.speaker)+'</div><br><div class="txt">'+s.line.text.split(' ').map(w=>'<span class="w">'+w+'</span>').join(' ')+'</div>';ui.appendChild(b);}
+  else if(s.line){const b=document.createElement('div');b.className='bubble';b.id='bub';
     b.innerHTML='<div class="who">'+(NAMES[s.line.speaker]||'')+'</div><div class="txt">'+s.line.text.split(' ').map(w=>'<span class="w">'+w+'</span>').join(' ')+'</div><div class="tail"></div>';ui.appendChild(b);}
   if(s.title){const t=document.createElement('div');t.className='title';t.id='ttl';t.innerHTML='<div class="main">'+s.title.main+'</div>'+(s.title.sub?'<div class="sub">'+s.title.sub+'</div>':'');ui.appendChild(t);}
   if(s.card){const c=document.createElement('div');c.className='card';c.id='crd';c.innerHTML=s.card.lines.map(l=>'<div class="l">'+l+'</div>').join('')+(s.card.small?'<div class="s">'+s.card.small+'</div>':'');ui.appendChild(c);}
@@ -209,10 +216,10 @@ window.__seek=function(T){
   let i=SHOTS.findIndex(s=>T>=s.start&&T<s.start+s.dur);if(i<0)i=SHOTS.length-1;
   if(i!==cur)mount(i);
   const s=SHOTS[i],lt=T-s.start,c=camAt(s,lt);
-  applyCam(back,c,.75);applyCam(mid,c,1);applyCam(front,c,1.35);
+  applyCam(back,c,s.hasBg?1:.75);applyCam(mid,c,1);applyCam(front,c,1.35);
   front.style.filter='blur(6px)';
   // shot fade in/out (soft cut)
-  const fade=Math.min(1,lt/.25,(s.dur-lt)/.25);document.getElementById('stage').style.opacity=(i===0||true)?clamp(.15+fade*.85,0,1):1;
+  const fade=Math.min(1,lt/.18,(s.dur-lt)/.18);document.getElementById('stage').style.opacity=clamp(.25+fade*.75,0,1);
   // actors
   const frame=Math.floor(lt*FPS),speaking=s.line?s.line.speaker:null,lineOn=lt>=.35&&lt<.35+s.lineDur;
   const amp=(speaking&&lineOn)?(s.env[Math.floor((lt-.35)*FPS)]||0):0;
@@ -239,6 +246,12 @@ window.__seek=function(T){
     const ws=b.querySelectorAll('.w'),prog=clamp((lt-.3)/Math.max(.5,s.lineDur*.92),0,1);
     ws.forEach((w,j)=>{const on=clamp(prog*ws.length-j+1,0,1);w.style.opacity=on;w.style.transform='translateY('+(1-on)*14+'px)';});
     const pin=ease.out(clamp(lt/.35,0,1));b.style.opacity=pin;b.style.transform='scale('+(.85+.15*pin)+')';}
+  const sb=document.getElementById('sub');
+  if(sb){const ws=sb.querySelectorAll('.w'),prog=clamp((lt-.3)/Math.max(.5,s.lineDur*.9),0,1);
+    ws.forEach((w,j)=>{const on=clamp(prog*ws.length-j+1,0,1);w.style.opacity=on;w.style.transform='translateY('+(1-on)*10+'px)';});
+    sb.style.opacity=ease.out(clamp(lt/.3,0,1));}
+  const gl=document.getElementById('glow');if(s.hasBg){const gx=30+20*Math.sin(T*.25),gy=20+8*Math.cos(T*.3);
+    gl.style.background='radial-gradient(ellipse at '+gx+'% '+gy+'%,rgba(255,214,140,.22),rgba(255,214,140,0) 55%)';}else gl.style.background='none';
   const tt=document.getElementById('ttl');if(tt){const p=ease.out(clamp((lt-.2)/.9,0,1));tt.style.top=(H*.2+(1-p)*80)+'px';tt.style.opacity=p;tt.style.letterSpacing=((1-p)*30)+'px';}
   const cr=document.getElementById('crd');if(cr){const p=ease.out(clamp((lt-.3)/.8,0,1));cr.style.top=(H*.12+(1-p)*120)+'px';cr.style.opacity=p;}
   // letterbox
