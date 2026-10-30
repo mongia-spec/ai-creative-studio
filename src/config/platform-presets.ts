@@ -1,3 +1,4 @@
+import { VISUAL_STYLES } from "./styles";
 /**
  * Platform presets are pure configuration: add a platform by adding an entry here.
  * Safe areas are percentages of the frame kept clear of platform UI (captions stay inside).
@@ -103,10 +104,5 @@ export function getPreset(id: string): PlatformPreset {
   return p;
 }
 
-export const STYLES = [
-  { id: "cinematic", label: "سينمائي" },
-  { id: "cartoon", label: "كرتوني" },
-  { id: "realistic", label: "واقعي" },
-  { id: "watercolor", label: "ألوان مائية" },
-  { id: "documentary", label: "وثائقي" },
-] as const;
+// The full style library (prompts, palettes, local looks) lives in ./styles.
+export const STYLES = VISUAL_STYLES.map(({ id, label }) => ({ id, label }));

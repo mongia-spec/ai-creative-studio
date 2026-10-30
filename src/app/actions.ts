@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
+import { VISUAL_STYLES } from "@/config/styles";
 import { getDefaultWorkspaceId } from "@/lib/workspace";
 import { archiveProject, createProject, getProject, updateProject, updateScript } from "@/lib/projects";
 import { generatePreview, generateScript } from "@/lib/studio";
@@ -56,6 +57,15 @@ export async function regenerateScriptAction(projectId: string, inputText: strin
     const job = await generateScript(db, projectId);
     if (job.status !== "succeeded") throw new Error(job.error ?? "فشل التوليد");
     refresh(projectId);
+  });
+}
+
+export async function setProjectStyleAction(projectId: string, style: string) {
+  return guard(async () => {
+    if (!VISUAL_STYLES.some((s) => s.id === style)) throw new Error("أسلوب غير معروف");
+    await updateProject(await getDb(), projectId, { style });
+    refresh(projectId);
+    revalidatePath(`/projects/${projectId}/story`);
   });
 }
 

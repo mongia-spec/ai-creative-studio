@@ -11,16 +11,19 @@ function esc(s: string) {
   return s.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-export function placeholderSvg(opts: { width: number; height: number; label: string; prompt: string; seed: string }) {
+export function placeholderSvg(opts: { width: number; height: number; label: string; prompt: string; seed: string; palette?: string[] }) {
   const h = hash(opts.seed);
   const hue1 = h % 360;
   const hue2 = (hue1 + 40 + (h % 80)) % 360;
   const { width: w, height: hgt } = opts;
+  // With a style palette, previews take its two darkest-first colours so the chosen style shows.
+  const pal = opts.palette?.filter((c) => /^#[0-9a-f]{6}$/i.test(c)) ?? [];
+  const c1 = pal[0] ?? `hsl(${hue1},45%,35%)`, c2 = pal[1] ?? `hsl(${hue2},50%,22%)`;
   const fs = Math.round(Math.min(w, hgt) / 12);
   const prompt = opts.prompt.length > 90 ? opts.prompt.slice(0, 90) + "…" : opts.prompt;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hgt}" viewBox="0 0 ${w} ${hgt}">
 <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="hsl(${hue1},45%,35%)"/><stop offset="1" stop-color="hsl(${hue2},50%,22%)"/></linearGradient></defs>
+<stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
 <rect width="100%" height="100%" fill="url(#g)"/>
 <text x="50%" y="42%" text-anchor="middle" direction="rtl" font-family="sans-serif" font-size="${fs}" fill="#fff" font-weight="700">${esc(opts.label)}</text>
 <text x="50%" y="54%" text-anchor="middle" direction="rtl" font-family="sans-serif" font-size="${Math.round(fs / 2.6)}" fill="#ffffffcc">${esc(prompt)}</text>
@@ -39,7 +42,7 @@ export const mockImageProvider: ImageProvider = {
     },
   },
   async generateImage(req) {
-    const svg = placeholderSvg({ width: req.width, height: req.height, label: req.label ?? "", prompt: req.prompt, seed: req.seed ?? req.prompt });
+    const svg = placeholderSvg({ width: req.width, height: req.height, label: req.label ?? "", prompt: req.prompt, seed: req.seed ?? req.prompt, palette: req.palette });
     return {
       result: { bytes: new TextEncoder().encode(svg), mimeType: "image/svg+xml", width: req.width, height: req.height },
       usage: { units: 1, unitType: "images", model: "placeholder-svg" },

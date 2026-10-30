@@ -3,6 +3,7 @@ import type { Db } from "@/db/client";
 import { getProvider } from "@/providers/registry";
 import type { ProviderInfo } from "@/providers/types";
 import { getPreset } from "@/config/platform-presets";
+import { getStyle } from "@/config/styles";
 import { getAsset, readAssetBytes, saveAsset } from "./assets";
 import { addReference, characterDescriptor, getCharacter } from "./characters";
 import { recordProviderCall } from "./cost";
@@ -66,7 +67,7 @@ export async function buildPlan(db: Db, projectId: string, quality?: Quality): P
   const costUsd = r2(items.reduce((a, i) => a + i.costUsd, 0));
   const retryUsd = r2(items.filter((i) => i.kind !== "character").reduce((a, i) => a + i.costUsd, 0) * RETRY_RATE);
   const live = items.some((i) => !i.mock);
-  const hash = crypto.createHash("sha256").update(JSON.stringify([q, items.map((i) => [i.kind, i.targetId, i.units, i.unitPriceUsd, i.provider])])).digest("hex").slice(0, 16);
+  const hash = crypto.createHash("sha256").update(JSON.stringify([q, p.style, items.map((i) => [i.kind, i.targetId, i.units, i.unitPriceUsd, i.provider])])).digest("hex").slice(0, 16);
   return {
     projectId, quality: q, items, costUsd, retryUsd, totalUsd: r2(costUsd + retryUsd), live, hash,
     providers: [image, video].map(({ id, name, isMock, commercial }) => ({ id, name, isMock, commercial })),
@@ -92,6 +93,7 @@ export interface RunReport { done: { kind: PlanItem["kind"]; label: string; cost
 
 export async function runPlan(db: Db, projectId: string): Promise<RunReport> {
   const p = await projectRow(db, projectId);
+  const style = getStyle(p.style);
   const plan = await buildPlan(db, projectId);
   const approval = p.generation_approval;
   if (plan.live && (!approval || approval.hash !== plan.hash)) throw new Error("التوليد المدفوع يحتاج موافقتك على هذه الخطة وحدّ الإنفاق أولًا.");
@@ -120,7 +122,7 @@ export async function runPlan(db: Db, projectId: string): Promise<RunReport> {
         const c = (await getCharacter(db, item.targetId))!;
         const { result, usage } = await imageP.generateImage({
           prompt: `Character reference sheet, full body, neutral pose, plain background. ${characterDescriptor(c)}`,
-          style: p.style, width: 768, height: 1024, label: c.name, seed: `char:${c.id}`,
+          style: style.prompt, palette: style.palette, width: 768, height: 1024, label: c.name, seed: `char:${c.id}`,
         });
         await recordProviderCall(db, { workspaceId: p.workspace_id, projectId, provider: imageP.info, usage });
         const a = await saveAsset(db, { workspaceId: p.workspace_id, projectId, source: "generated", name: `character-${c.name}`, mimeType: result.mimeType, bytes: result.bytes, width: result.width, height: result.height, providerRef: { provider: imageP.info.id } });
@@ -131,7 +133,7 @@ export async function runPlan(db: Db, projectId: string): Promise<RunReport> {
         const references = [];
         for (const id of referenceAssetIds.slice(0, 10)) { const a = await getAsset(db, id); if (a && a.kind === "image") references.push({ bytes: await readAssetBytes(a), mimeType: a.mime_type }); }
         const { result, usage } = await imageP.generateImage({
-          prompt: `${prompt}\nFirst frame of a video shot. No text, no talking.`, style: p.style, ...size,
+          prompt: `${prompt}\nFirst frame of a video shot. No text, no talking.`, style: style.prompt, palette: style.palette, ...size,
           label: `لقطة ${scene.position}`, seed: `kf:${scene.id}`, referenceAssetIds, references,
         });
         await recordProviderCall(db, { workspaceId: p.workspace_id, projectId, provider: imageP.info, usage });
@@ -142,8 +144,8 @@ export async function runPlan(db: Db, projectId: string): Promise<RunReport> {
         const frame = scene.preview_asset_id ? await getAsset(db, scene.preview_asset_id) : null;
         if (!frame) throw new Error(`اللقطة ${scene.position} بلا إطار أول`);
         const { result, usage } = await videoP.generateVideo({
-          prompt: scene.motion_prompt || scene.visual_prompt || scene.description,
-          negativePrompt: "talking, lip movement, mouth moving, text, subtitles, extra people, deformed hands",
+          prompt: `${scene.motion_prompt || scene.visual_prompt || scene.description}\nVisual style: ${style.prompt}`,
+          negativePrompt: `talking, lip movement, mouth moving, text, subtitles, extra people, deformed hands, ${style.negative}`,
           image: { bytes: await readAssetBytes(frame), mimeType: frame.mime_type }, durationSec: item.units, ...size, resolution: res,
         });
         await recordProviderCall(db, { workspaceId: p.workspace_id, projectId, provider: videoP.info, usage });

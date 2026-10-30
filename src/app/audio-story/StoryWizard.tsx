@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import AudioRecorder from "@/app/components/AudioRecorder";
+import StylePicker from "@/app/components/StylePicker";
+import type { StyleOption } from "@/config/styles";
 import type { StoryAnalysis } from "@/lib/audio-story";
 import { analyzeStoryAction, createStoryProjectAction } from "./actions";
 
@@ -18,7 +20,7 @@ const TRANSFORMERS = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2
 const MODELS = [["onnx-community/whisper-base", "سريع (نحو 80 ميغابايت)"], ["onnx-community/whisper-small", "أدق (نحو 250 ميغابايت)"]] as const;
 
 type Opt = { id: string; label: string };
-export default function StoryWizard({ audio, presets, styles, kinds }: { audio: { id: string; name: string; duration: number | null }[]; presets: Opt[]; styles: Opt[]; kinds: Opt[] }) {
+export default function StoryWizard({ audio, presets, styles, kinds }: { audio: { id: string; name: string; duration: number | null }[]; presets: Opt[]; styles: StyleOption[]; kinds: Opt[] }) {
   const router = useRouter();
   const [audioId, setAudioId] = useState(audio[0]?.id ?? "");
   const [text, setText] = useState("");
@@ -138,9 +140,12 @@ export default function StoryWizard({ audio, presets, styles, kinds }: { audio: 
               </ol>
             </div>
           ))}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div>
+            <h3 className="mb-2 font-bold">🎨 اختاري أسلوب القصة البصري</h3>
+            <StylePicker options={styles} value={style} onChange={setStyle} />
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select className="field" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="نوع المشروع">{kinds.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</select>
-            <select className="field" value={style} onChange={(e) => setStyle(e.target.value)} aria-label="الأسلوب البصري">{styles.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</select>
             <select className="field" value={quality} onChange={(e) => setQuality(e.target.value as "draft" | "standard")} aria-label="الجودة">
               <option value="draft">مسودة 480p (الأرخص)</option><option value="standard">قياسي 720p</option>
             </select>

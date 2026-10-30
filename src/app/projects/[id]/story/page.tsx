@@ -6,6 +6,8 @@ import { listScenes, listShots } from "@/lib/scenes";
 import { listExports } from "@/lib/studio";
 import StoryShots from "./StoryShots";
 import GenerationPanel from "./GenerationPanel";
+import StyleSwitcher from "./StyleSwitcher";
+import { STYLE_OPTIONS } from "@/config/styles";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
         <p><b>بصدق:</b> الفيديو المصدَّر هنا <b>تركيب من أصولك الموجودة</b> (مقاطع جاهزة، صور، حركة كاميرا، ترجمة، صوتك). وفي الوضع التجريبي الحالي لا يولّد حركة جديدة للشخصيات.</p>
         <p>اللقطات المعلَّمة «تحتاج مزوّد فيديو» جاهز لها وصف الحركة والبرومبت، ويُولَّد الفيديو الحقيقي لها فقط بعد ربط مزوّد بموافقتك.</p>
       </div>
+      <StyleSwitcher projectId={id} options={STYLE_OPTIONS} initial={project.style} />
       <GenerationPanel projectId={id} initialQuality={(project as { quality?: "draft" | "standard" }).quality ?? "draft"} />
       <StoryShots
         projectId={id}

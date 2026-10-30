@@ -96,6 +96,8 @@ export interface ImageRequest {
   width: number;
   height: number;
   style: string;
+  /** Style colours, used by the mock preview only. */
+  palette?: string[];
   label?: string;
   seed?: string;
   referenceAssetIds?: string[];

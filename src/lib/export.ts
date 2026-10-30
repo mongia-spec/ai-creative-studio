@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { Db } from "@/db/client";
 import { getPreset, type PlatformPreset } from "@/config/platform-presets";
+import { styleLook } from "@/config/styles";
 import { getAsset, readAssetBytes, saveAsset } from "./assets";
 import { EXT_BY_MIME, hasFfmpeg, runFfmpeg, withTempDir } from "./ffmpeg";
 import type { Scene } from "./scenes";
@@ -37,6 +38,8 @@ export interface ExportOptions {
   fromPos?: number;
   toPos?: number;
   motion?: boolean;
+  /** Local approximation of the project's visual style (FFmpeg filter). On unless false. */
+  look?: boolean;
   audio?: boolean;
   brand?: boolean;
   endCard?: boolean;
@@ -91,8 +94,8 @@ export function motionFilter(motion: string, frames: number, size: { width: numb
 
 export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOptions) {
   if (!(await hasFfmpeg())) throw new Error("FFmpeg غير مثبت على هذا الجهاز، وهو مطلوب للتصدير المحلي");
-  const [project] = await db.query<{ workspace_id: string; title: string; platform_preset: string; music_asset_id: string | null; music_volume: string }>(
-    `select workspace_id, title, platform_preset, music_asset_id, music_volume from projects where id=$1`, [projectId]);
+  const [project] = await db.query<{ workspace_id: string; title: string; platform_preset: string; music_asset_id: string | null; music_volume: string; style: string }>(
+    `select workspace_id, title, platform_preset, music_asset_id, music_volume, style from projects where id=$1`, [projectId]);
   if (!project) throw new Error("المشروع غير موجود");
   let scenes = await db.query<Scene>(`select * from scenes where project_id=$1 and status<>'rejected' order by position`, [projectId]);
   if (opts.fromPos || opts.toPos) scenes = scenes.filter((x) => x.position >= (opts.fromPos ?? 1) && x.position <= (opts.toPos ?? Infinity));
@@ -102,6 +105,7 @@ export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOp
   const preset = getPreset(opts.presetId ?? project.platform_preset);
   const size = draftSize(preset);
   const fps = 25;
+  const look = opts.look === false ? "" : styleLook(project.style, size);
   const brand = opts.brand ? await loadBrand(db, project.workspace_id) : null;
   const endCard = !!(opts.endCard && brand?.cta);
 
@@ -134,7 +138,7 @@ export async function renderDraftVideo(db: Db, projectId: string, opts: ExportOp
       chains.push(
         `[${idx}:v]split[a${i}][b${i}];[a${i}]scale=${size.width}:${size.height}:force_original_aspect_ratio=increase,crop=${size.width}:${size.height},boxblur=20:2[bg${i}];` +
         `[b${i}]scale=${size.width}:${size.height}:force_original_aspect_ratio=decrease[fg${i}];` +
-        `[bg${i}][fg${i}]overlay=(W-w)/2:(H-h)/2,setsar=1${hold},setpts=N/${fps}/TB,format=yuv420p[v${i}]`);
+        `[bg${i}][fg${i}]overlay=(W-w)/2:(H-h)/2,setsar=1${look}${hold},setpts=N/${fps}/TB,format=yuv420p[v${i}]`);
       idx++;
       cues.push({ caption: sceneCaption(s), start: t, end: t + d });
       if (opts.audio !== false && s.audio_asset_id) audioIn.push({

@@ -2,7 +2,8 @@ import { getDb } from "@/db/client";
 import { getDefaultWorkspaceId } from "@/lib/workspace";
 import { listAudio } from "@/lib/audio";
 import { listCharacters } from "@/lib/characters";
-import { PLATFORM_PRESETS, STYLES } from "@/config/platform-presets";
+import { PLATFORM_PRESETS } from "@/config/platform-presets";
+import { STYLE_OPTIONS } from "@/config/styles";
 import { PROJECT_KINDS } from "@/lib/audio-story";
 import StoryWizard from "./StoryWizard";
 
@@ -26,7 +27,7 @@ export default async function AudioStoryPage() {
       <StoryWizard
         audio={audio.map((a) => ({ id: a.id, name: a.name ?? "تسجيل", duration: a.duration_sec == null ? null : Number(a.duration_sec) }))}
         presets={PLATFORM_PRESETS.map((p) => ({ id: p.id, label: p.label }))}
-        styles={STYLES.map((x) => ({ id: x.id, label: x.label }))}
+        styles={STYLE_OPTIONS}
         kinds={PROJECT_KINDS.map(([id, label]) => ({ id, label }))}
       />
     </div>

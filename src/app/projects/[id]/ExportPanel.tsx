@@ -16,10 +16,10 @@ export default function ExportPanel({ projectId, exports, missingPreviews, prese
   projectId: string; exports: Exp[]; missingPreviews: number; presets: PresetOpt[]; projectPreset: string; sceneCount: number; hasBrand: boolean;
 }) {
   const { pending, error, run } = useAction();
-  const [o, setO] = useState({ captions: true, motion: true, audio: true, brand: hasBrand, endCard: hasBrand, presetId: projectPreset, fromPos: 1, toPos: sceneCount });
+  const [o, setO] = useState({ captions: true, motion: true, look: true, audio: true, brand: hasBrand, endCard: hasBrand, presetId: projectPreset, fromPos: 1, toPos: sceneCount });
   const set = <K extends keyof typeof o>(k: K, v: (typeof o)[K]) => setO({ ...o, [k]: v });
   const latest = exports[0];
-  const box = (k: "captions" | "motion" | "audio" | "brand" | "endCard", label: string, disabled = false) => (
+  const box = (k: "captions" | "motion" | "look" | "audio" | "brand" | "endCard", label: string, disabled = false) => (
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={o[k]} disabled={disabled} onChange={(e) => set(k, e.target.checked)} /> {label}</label>
   );
   const isRange = o.fromPos > 1 || o.toPos < sceneCount;
@@ -43,6 +43,7 @@ export default function ExportPanel({ projectId, exports, missingPreviews, prese
       <div className="grid grid-cols-2 gap-1">
         {box("captions", "ترجمة عربية مدمجة")}
         {box("motion", "حركة الكاميرا")}
+        {box("look", "لمسة الأسلوب البصري (فلتر محلي تقريبي)")}
         {box("audio", "صوت المشاهد والموسيقى")}
         {box("brand", "علامتي (شعار/اسم)", !hasBrand)}
         {box("endCard", "بطاقة دعوة ختامية", !hasBrand)}

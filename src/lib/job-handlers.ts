@@ -1,6 +1,7 @@
 import { registerJobHandler } from "./jobs";
 import { getProvider } from "@/providers/registry";
 import { getPreset } from "@/config/platform-presets";
+import { getStyle } from "@/config/styles";
 import { recordProviderCall } from "./cost";
 import { getAsset, readAssetBytes, saveAsset } from "./assets";
 import { renderDraftVideo, type ExportOptions } from "./export";
@@ -65,7 +66,7 @@ registerJobHandler(JOB.PREVIEW, "image", async ({ db, job, setProvider }) => {
   const provider = getProvider("image", "draft");
   setProvider(provider.info.id);
   const { result, usage } = await provider.generateImage({
-    prompt: String(job.input.prompt), style: scene.style, label: `مشهد ${scene.position}: ${scene.title}`,
+    prompt: String(job.input.prompt), style: getStyle(scene.style).prompt, palette: getStyle(scene.style).palette, label: `مشهد ${scene.position}: ${scene.title}`,
     width: Math.round(preset.width * scale), height: Math.round(preset.height * scale),
     seed: `${sceneId}:${job.input.variant ?? 0}`,
     // Identity references come from the job input (see sceneIdentityInput).
